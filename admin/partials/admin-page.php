@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 		<nav class="nav-tab-wrapper">
 			<?php foreach ( $tabs as $tab_slug => $tab_label ) : ?>
 				<a href="<?php echo esc_url( admin_url( 'admin.php?page=segmentflow&tab=' . $tab_slug ) ); ?>"
-				   class="nav-tab <?php echo $current_tab === $tab_slug ? 'nav-tab-active' : ''; ?>">
+					class="nav-tab <?php echo esc_attr( $current_tab === $tab_slug ? 'nav-tab-active' : '' ); ?>">
 					<?php echo esc_html( $tab_label ); ?>
 				</a>
 			<?php endforeach; ?>

@@ -20,6 +20,13 @@
         <!-- Allow short array syntax (modern PHP) -->
         <exclude name="Universal.Arrays.DisallowShortArraySyntax"/>
     </rule>
+
+    <!-- Disable CapitalPDangit auto-correction for 'wordpress' strings.
+         This plugin uses lowercase 'wordpress' as a stored platform identifier
+         (alongside 'woocommerce') and must not be rewritten to 'WordPress'. -->
+    <rule ref="WordPress.WP.CapitalPDangit">
+        <exclude name="WordPress.WP.CapitalPDangit.Misspelled"/>
+    </rule>
     <rule ref="WordPress.WP.I18n">
         <properties>
             <property name="text_domain" type="array">
@@ -30,7 +37,7 @@
 
     <!-- PHP Compatibility -->
     <rule ref="PHPCompatibilityWP"/>
-    <config name="testVersion" value="8.5-"/>
+    <config name="testVersion" value="8.1-"/>
 
     <!-- Minimum WP version for deprecated function checks -->
     <config name="minimum_wp_version" value="5.8"/>

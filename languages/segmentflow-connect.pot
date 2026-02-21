@@ -3,21 +3,233 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Segmentflow Connect 1.0.0\n"
-"Report-Msgid-Bugs-To: https://segmentflow.ai/support\n"
-"POT-Creation-Date: 2026-02-21 00:00:00+00:00\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/segmentflow-connect\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2026-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"X-Generator: Segmentflow\n"
+"POT-Creation-Date: 2026-02-21T09:56:05+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: segmentflow-connect\n"
 
 #. Plugin Name of the plugin
+#: segmentflow-connect.php
 msgid "Segmentflow Connect"
 msgstr ""
 
+#. Plugin URI of the plugin
+#: segmentflow-connect.php
+msgid "https://segmentflow.ai/integrations/wordpress"
+msgstr ""
+
 #. Description of the plugin
+#: segmentflow-connect.php
 msgid "Connect your WordPress site or WooCommerce store to Segmentflow for AI-powered email marketing, customer segmentation, and revenue attribution."
+msgstr ""
+
+#. Author of the plugin
+#: segmentflow-connect.php
+#: admin/class-segmentflow-admin.php:55
+#: admin/class-segmentflow-admin.php:56
+msgid "Segmentflow"
+msgstr ""
+
+#. Author URI of the plugin
+#: segmentflow-connect.php
+msgid "https://segmentflow.ai"
+msgstr ""
+
+#: admin/class-segmentflow-admin-settings.php:29
+msgid "General Settings"
+msgstr ""
+
+#: admin/class-segmentflow-admin-settings.php:43
+msgid "Debug Mode"
+msgstr ""
+
+#: admin/class-segmentflow-admin-settings.php:49
+msgid "Enable debug logging for the Segmentflow SDK."
+msgstr ""
+
+#: admin/class-segmentflow-admin-settings.php:62
+msgid "Require Consent"
+msgstr ""
+
+#: admin/class-segmentflow-admin-settings.php:68
+msgid "Require user consent before tracking. Enable this for GDPR cookie consent."
+msgstr ""
+
+#: admin/class-segmentflow-admin-settings.php:81
+msgid "API Host"
+msgstr ""
+
+#: admin/class-segmentflow-admin-settings.php:87
+msgid "Override the Segmentflow API host URL. Leave default unless instructed."
+msgstr ""
+
+#: admin/class-segmentflow-admin-settings.php:96
+msgid "Configure your Segmentflow integration settings."
+msgstr ""
+
+#: admin/class-segmentflow-admin.php:93
+msgid "Connection"
+msgstr ""
+
+#: admin/class-segmentflow-admin.php:97
+msgid "Settings"
+msgstr ""
+
+#: admin/class-segmentflow-admin.php:100
+msgid "WooCommerce"
+msgstr ""
+
+#. translators: %s: Segmentflow settings page URL
+#: admin/class-segmentflow-admin.php:161
+#, php-format
+msgid "WooCommerce detected! Visit the %s to upgrade your Segmentflow connection for order tracking, customer sync, and revenue attribution."
+msgstr ""
+
+#: admin/class-segmentflow-admin.php:162
+msgid "Segmentflow settings"
+msgstr ""
+
+#: admin/partials/admin-connection.php:23
+msgid "Connected to Segmentflow"
+msgstr ""
+
+#: admin/partials/admin-connection.php:33
+msgid "Organization"
+msgstr ""
+
+#: admin/partials/admin-connection.php:38
+msgid "Platform"
+msgstr ""
+
+#: admin/partials/admin-connection.php:47
+msgid "Write Key"
+msgstr ""
+
+#: admin/partials/admin-connection.php:53
+msgid "Tracking Status"
+msgstr ""
+
+#: admin/partials/admin-connection.php:58
+msgid "Active (full WooCommerce enrichment)"
+msgstr ""
+
+#: admin/partials/admin-connection.php:60
+msgid "Active (page views + identify)"
+msgstr ""
+
+#: admin/partials/admin-connection.php:72
+msgid "WooCommerce not detected. Install WooCommerce for order tracking, customer sync, and revenue attribution."
+msgstr ""
+
+#: admin/partials/admin-connection.php:79
+msgid "Disconnect"
+msgstr ""
+
+#: admin/partials/admin-connection.php:86
+msgid "Not connected to Segmentflow"
+msgstr ""
+
+#: admin/partials/admin-connection.php:89
+#: admin/partials/admin-connection.php:115
+msgid "Connect to Segmentflow"
+msgstr ""
+
+#: admin/partials/admin-connection.php:93
+msgid "Connect your WooCommerce store to Segmentflow for AI-powered email marketing, customer segmentation, and revenue attribution."
+msgstr ""
+
+#: admin/partials/admin-connection.php:95
+msgid "Connect your WordPress site to Segmentflow for page view tracking and visitor identification."
+msgstr ""
+
+#: admin/partials/admin-connection.php:102
+msgid "Automatic customer and order data sync"
+msgstr ""
+
+#: admin/partials/admin-connection.php:103
+msgid "Real-time webhooks for new orders and customer updates"
+msgstr ""
+
+#: admin/partials/admin-connection.php:104
+msgid "Pre-built customer segments (Repeat Customers, Churning, etc.)"
+msgstr ""
+
+#: admin/partials/admin-connection.php:105
+msgid "Revenue attribution for email campaigns"
+msgstr ""
+
+#: admin/partials/admin-connection.php:107
+msgid "Page view tracking"
+msgstr ""
+
+#: admin/partials/admin-connection.php:108
+msgid "Automatic visitor identification for logged-in users"
+msgstr ""
+
+#: admin/partials/admin-connection.php:109
+msgid "Browser context and referrer tracking"
+msgstr ""
+
+#. translators: %s: Segmentflow signup URL
+#: admin/partials/admin-connection.php:123
+#, php-format
+msgid "Don't have an account? %s"
+msgstr ""
+
+#: admin/partials/admin-connection.php:124
+msgid "Sign up for free"
+msgstr ""
+
+#: admin/partials/admin-woocommerce.php:17
+msgid "WooCommerce Integration"
+msgstr ""
+
+#: admin/partials/admin-woocommerce.php:22
+msgid "WooCommerce integration active"
+msgstr ""
+
+#: admin/partials/admin-woocommerce.php:28
+msgid "Store URL"
+msgstr ""
+
+#: admin/partials/admin-woocommerce.php:32
+msgid "WooCommerce Version"
+msgstr ""
+
+#: admin/partials/admin-woocommerce.php:38
+msgid "Unknown"
+msgstr ""
+
+#: admin/partials/admin-woocommerce.php:44
+msgid "Currency"
+msgstr ""
+
+#: admin/partials/admin-woocommerce.php:56
+msgid "Tracking"
+msgstr ""
+
+#: admin/partials/admin-woocommerce.php:59
+msgid "Full WooCommerce enrichment (cart, currency, customer ID)"
+msgstr ""
+
+#: admin/partials/admin-woocommerce.php:69
+msgid "You are connected as a plain WordPress site. To enable WooCommerce features (order tracking, customer sync, revenue attribution), reconnect from the Connection tab."
+msgstr ""
+
+#: includes/class-segmentflow-api.php:51
+msgid "Failed to check connection status."
+msgstr ""
+
+#: includes/class-segmentflow-auth.php:149
+msgid "Insufficient permissions."
+msgstr ""
+
+#: includes/class-segmentflow-auth.php:153
+msgid "Disconnected from Segmentflow."
 msgstr ""

@@ -88,13 +88,17 @@ class Segmentflow_Auth {
 	 * processes the poll token to retrieve the write key.
 	 */
 	public function maybe_handle_return(): void {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Auth return from external redirect.
-		if ( ! isset( $_GET['page'] ) || 'segmentflow' !== $_GET['page'] ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Auth return from external redirect.
-		if ( ! isset( $_GET['connected'] ) || '1' !== $_GET['connected'] ) {
+		if ( ! isset( $_GET['page'] ) || 'segmentflow' !== sanitize_key( wp_unslash( $_GET['page'] ) ) ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Auth return from external redirect.
+		if ( ! isset( $_GET['connected'] ) || '1' !== sanitize_text_field( wp_unslash( $_GET['connected'] ) ) ) {
 			return;
 		}
 

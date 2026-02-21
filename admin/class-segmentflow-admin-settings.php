@@ -32,11 +32,15 @@ class Segmentflow_Admin_Settings {
 		);
 
 		// Debug mode.
-		register_setting( 'segmentflow-settings', 'segmentflow_debug_mode', [
-			'type'              => 'boolean',
-			'sanitize_callback' => 'rest_sanitize_boolean',
-			'default'           => false,
-		] );
+		register_setting(
+			'segmentflow-settings',
+			'segmentflow_debug_mode',
+			[
+				'type'              => 'boolean',
+				'sanitize_callback' => 'rest_sanitize_boolean',
+				'default'           => false,
+			]
+		);
 
 		add_settings_field(
 			'segmentflow_debug_mode',
@@ -51,11 +55,15 @@ class Segmentflow_Admin_Settings {
 		);
 
 		// Consent required.
-		register_setting( 'segmentflow-settings', 'segmentflow_consent_required', [
-			'type'              => 'boolean',
-			'sanitize_callback' => 'rest_sanitize_boolean',
-			'default'           => false,
-		] );
+		register_setting(
+			'segmentflow-settings',
+			'segmentflow_consent_required',
+			[
+				'type'              => 'boolean',
+				'sanitize_callback' => 'rest_sanitize_boolean',
+				'default'           => false,
+			]
+		);
 
 		add_settings_field(
 			'segmentflow_consent_required',
@@ -70,11 +78,15 @@ class Segmentflow_Admin_Settings {
 		);
 
 		// API host override.
-		register_setting( 'segmentflow-settings', 'segmentflow_api_host', [
-			'type'              => 'string',
-			'sanitize_callback' => 'esc_url_raw',
-			'default'           => 'https://api.segmentflow.ai',
-		] );
+		register_setting(
+			'segmentflow-settings',
+			'segmentflow_api_host',
+			[
+				'type'              => 'string',
+				'sanitize_callback' => 'esc_url_raw',
+				'default'           => 'https://api.segmentflow.ai',
+			]
+		);
 
 		add_settings_field(
 			'segmentflow_api_host',

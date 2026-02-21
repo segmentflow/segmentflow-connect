@@ -90,7 +90,7 @@ class Segmentflow_Tracking {
 
 		// Determine user ID prefix based on active integrations.
 		$prefix = 'wp_';
-		if ( $has_extra && ! empty( $extra_context['platform'] ) && $extra_context['platform'] === 'woocommerce' ) {
+		if ( $has_extra && ! empty( $extra_context['platform'] ) && 'woocommerce' === $extra_context['platform'] ) {
 			$prefix = 'wc_';
 		}
 
@@ -101,8 +101,8 @@ class Segmentflow_Tracking {
 			var config = {
 				writeKey: <?php echo wp_json_encode( $write_key ); ?>,
 				host: <?php echo wp_json_encode( $api_host ); ?>,
-				debug: <?php echo $debug_mode ? 'true' : 'false'; ?>,
-				consentRequired: <?php echo $consent_required ? 'true' : 'false'; ?>
+			debug: <?php echo wp_json_encode( $debug_mode ); ?>,
+			consentRequired: <?php echo wp_json_encode( $consent_required ); ?>
 			};
 
 			var wpContext = {

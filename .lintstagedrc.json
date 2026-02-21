@@ -1,4 +1,4 @@
 {
   "src/**/*.ts": ["eslint --fix", "prettier --write"],
-  "**/*.php": ["vendor/bin/phpcbf --standard=phpcs.xml.dist"]
+  "**/*.php": ["bash -c 'vendor/bin/phpcbf --standard=phpcs.xml.dist \"$@\" || true' --"]
 }

@@ -50,29 +50,6 @@ class Segmentflow_Lifecycle {
 	}
 
 	/**
-	 * Plugin uninstall handler.
-	 *
-	 * Called statically by WordPress when the plugin is deleted.
-	 * Removes all plugin data from the database.
-	 */
-	public static function uninstall(): void {
-		// Ensure dependencies are available.
-		require_once plugin_dir_path( __DIR__ ) . 'includes/class-segmentflow-options.php';
-
-		Segmentflow_Options::delete_all();
-		delete_option( 'segmentflow_activated_at' );
-
-		// Best-effort: notify Segmentflow API of disconnection.
-		wp_remote_request(
-			'https://api.segmentflow.ai/v1/integrations/disconnect',
-			[
-				'method'  => 'DELETE',
-				'timeout' => 5,
-			]
-		);
-	}
-
-	/**
 	 * Register late activation detection hooks.
 	 *
 	 * Detects when WooCommerce is activated AFTER this plugin. Allows the
@@ -92,7 +69,7 @@ class Segmentflow_Lifecycle {
 	 * @param bool   $network Whether this is a network-wide activation.
 	 */
 	public function check_for_dependency( string $plugin, bool $network ): void {
-		if ( $plugin !== 'woocommerce/woocommerce.php' ) {
+		if ( 'woocommerce/woocommerce.php' !== $plugin ) {
 			return;
 		}
 
@@ -100,7 +77,7 @@ class Segmentflow_Lifecycle {
 		// If we're already connected as a plain WordPress site, set a transient
 		// to show an admin notice suggesting WC connection upgrade.
 		$options = new Segmentflow_Options();
-		if ( $options->is_connected() && $options->get_connected_platform() === 'wordpress' ) {
+		if ( $options->is_connected() && 'WordPress' === $options->get_connected_platform() ) {
 			set_transient( 'segmentflow_wc_upgrade_notice', true, 0 );
 		}
 	}

@@ -41,9 +41,14 @@ class Segmentflow_API {
 	 * @return array{connected: bool, write_key?: string, organization_name?: string, error?: string}
 	 */
 	public function check_status( string $poll_token ): array {
-		$response = $this->request( 'GET', '/v1/integrations/connect/status', [], [
-			'X-Poll-Token' => $poll_token,
-		] );
+		$response = $this->request(
+			'GET',
+			'/v1/integrations/connect/status',
+			[],
+			[
+				'X-Poll-Token' => $poll_token,
+			]
+		);
 
 		if ( ! $response['success'] ) {
 			return [
@@ -69,9 +74,14 @@ class Segmentflow_API {
 			return true;
 		}
 
-		$response = $this->request( 'DELETE', '/v1/integrations/disconnect', [], [
-			'X-Write-Key' => $write_key,
-		] );
+		$response = $this->request(
+			'DELETE',
+			'/v1/integrations/disconnect',
+			[],
+			[
+				'X-Write-Key' => $write_key,
+			]
+		);
 
 		return $response['success'];
 	}

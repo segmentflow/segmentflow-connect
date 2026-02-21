@@ -3,7 +3,7 @@ Contributors: segmentflow
 Tags: email marketing, analytics, segmentation, woocommerce, tracking
 Requires at least: 5.8
 Tested up to: 6.7
-Requires PHP: 8.5
+Requires PHP: 8.1
 Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -48,7 +48,7 @@ When WooCommerce is active, Segmentflow Connect automatically enables additional
 = Requirements =
 
 * WordPress 5.8 or later
-* PHP 8.5 or later
+* PHP 8.1 or later
 * A [Segmentflow](https://segmentflow.ai) account
 * WooCommerce 5.0 or later (optional -- for e-commerce features)
 
@@ -84,6 +84,44 @@ The plugin includes a "Require Consent" setting that prevents tracking until the
 = What happens if I install WooCommerce after this plugin? =
 
 The plugin detects WooCommerce automatically and offers to upgrade your connection for full e-commerce features. No reinstallation needed.
+
+== Third-Party Services ==
+
+This plugin connects to [Segmentflow](https://segmentflow.ai), a third-party
+email marketing and customer data platform. A Segmentflow account is required.
+
+= Segmentflow Tracking SDK =
+
+When the plugin is connected, a JavaScript tracking SDK is loaded from
+Segmentflow's CDN (https://cdn.segmentflow.ai/sdk.js) on all frontend pages.
+This SDK collects page view events and, for logged-in users, sends their
+WordPress user ID and email address to Segmentflow for visitor identification.
+
+When WooCommerce is active, additional data is included: WooCommerce customer ID,
+cart hash, and store currency.
+
+The "Require Consent" setting can be enabled to prevent tracking until the
+visitor has given consent via your cookie consent solution.
+
+= Segmentflow API =
+
+The plugin communicates with the Segmentflow API (https://api.segmentflow.ai) to:
+
+* Check connection status during the initial setup flow
+* Notify Segmentflow when the plugin is disconnected or uninstalled
+
+= Segmentflow Dashboard =
+
+During the connection flow, the user is redirected to the Segmentflow dashboard
+(https://app.segmentflow.ai) to authorize the connection. When WooCommerce is
+active, this flow includes granting Segmentflow read/write API access to your
+store's customers, orders, and products via WooCommerce's built-in authorization
+screen.
+
+= Links =
+
+* [Segmentflow Terms of Service](https://segmentflow.ai/terms)
+* [Segmentflow Privacy Policy](https://segmentflow.ai/privacy)
 
 == Changelog ==
 
