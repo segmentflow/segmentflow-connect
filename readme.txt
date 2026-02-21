@@ -1,55 +1,69 @@
-=== Segmentflow for WooCommerce ===
+=== Segmentflow Connect ===
 Contributors: segmentflow
-Tags: email marketing, segmentation, woocommerce, analytics, customer data
+Tags: email marketing, analytics, segmentation, woocommerce, tracking
 Requires at least: 5.8
 Tested up to: 6.7
-Requires PHP: 8.2
+Requires PHP: 8.5
 Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Connect your WooCommerce store to Segmentflow for AI-powered email marketing and customer segmentation.
+Connect your WordPress website or WooCommerce store to Segmentflow for AI-powered email marketing, customer segmentation, and revenue attribution.
 
 == Description ==
 
-Segmentflow for WooCommerce connects your store to [Segmentflow](https://segmentflow.ai), enabling:
+Segmentflow Connect links your WordPress site to [Segmentflow](https://segmentflow.ai), enabling:
 
 * **Talk to your data** -- Create customer segments using natural language ("Customers who bought twice but haven't opened an email in a month")
 * **Brand-aware creative** -- Automatically pull your logos, product photos, and color palettes to generate ready-to-send email templates
 * **One-click campaigns** -- Launch email campaigns with real-time delivery stats
 * **Revenue attribution** -- Track the exact dollar amount every campaign generates
 
-= How It Works =
+= Works on Any WordPress Site =
 
-1. Install and activate this plugin
-2. Click "Connect to Segmentflow" in WooCommerce > Settings > Segmentflow
-3. Approve the connection in your Segmentflow dashboard
-4. Your customer data, orders, and products sync automatically
-5. Real-time webhooks keep everything up to date
+Segmentflow Connect works on **any WordPress site** -- WooCommerce is optional. On a plain WordPress site, you get:
 
-= Features =
+* Page view tracking
+* Automatic visitor identification for logged-in users
+* Browser context and referrer tracking
+
+= WooCommerce Enrichment (Optional) =
+
+When WooCommerce is active, Segmentflow Connect automatically enables additional features:
 
 * **Automatic data sync** -- Customers, orders, and products sync to Segmentflow
 * **Real-time webhooks** -- New orders, customer updates, and product changes are sent instantly
-* **Storefront tracking** -- Page views and customer identity are captured via the Segmentflow SDK
+* **Cart context** -- Cart hash, currency, and WooCommerce customer ID enrichment
 * **Pre-built segments** -- 11 ready-to-use customer segments (Repeat Customers, Churning Customers, etc.)
-* **Zero configuration** -- Connect once, everything works automatically
+* **Revenue attribution** -- Track which email campaigns drive revenue
+
+= How It Works =
+
+1. Install and activate this plugin
+2. Click "Connect to Segmentflow" in the Segmentflow settings page
+3. Approve the connection in your Segmentflow dashboard
+4. Tracking begins immediately
+5. If WooCommerce is active, customer data, orders, and products sync automatically
 
 = Requirements =
 
 * WordPress 5.8 or later
-* WooCommerce 5.0 or later
-* PHP 8.2 or later
+* PHP 8.5 or later
 * A [Segmentflow](https://segmentflow.ai) account
+* WooCommerce 5.0 or later (optional -- for e-commerce features)
 
 == Installation ==
 
-1. Upload `segmentflow-woocommerce` to the `/wp-content/plugins/` directory, or install directly through the WordPress plugins screen
+1. Upload `segmentflow-connect` to the `/wp-content/plugins/` directory, or install directly through the WordPress plugins screen
 2. Activate the plugin through the 'Plugins' screen in WordPress
-3. Navigate to WooCommerce > Settings > Segmentflow
+3. Navigate to the Segmentflow settings page in the admin menu
 4. Click "Connect to Segmentflow" and follow the prompts
 
 == Frequently Asked Questions ==
+
+= Do I need WooCommerce? =
+
+No. Segmentflow Connect works on any WordPress site. WooCommerce features activate automatically when WooCommerce is installed.
 
 = Do I need a Segmentflow account? =
 
@@ -57,9 +71,9 @@ Yes. Sign up for free at [segmentflow.ai](https://segmentflow.ai).
 
 = What data is synced? =
 
-Customer profiles (name, email, address), order history (items, totals, status), and product catalog (name, images, prices). No sensitive payment information is transmitted.
+On plain WordPress: page views and logged-in user identity. With WooCommerce: customer profiles (name, email, address), order history (items, totals, status), and product catalog (name, images, prices). No sensitive payment information is transmitted.
 
-= Does this plugin slow down my store? =
+= Does this plugin slow down my site? =
 
 No. The tracking SDK is loaded asynchronously from a CDN and does not block page rendering. Webhook processing happens server-to-server.
 
@@ -67,17 +81,22 @@ No. The tracking SDK is loaded asynchronously from a CDN and does not block page
 
 The plugin includes a "Require Consent" setting that prevents tracking until the user has given consent. You can integrate this with your existing cookie consent solution.
 
+= What happens if I install WooCommerce after this plugin? =
+
+The plugin detects WooCommerce automatically and offers to upgrade your connection for full e-commerce features. No reinstallation needed.
+
 == Changelog ==
 
 = 1.0.0 =
 * Initial release
-* WooCommerce store connection via auto-auth
-* Customer, order, and product data sync
-* Real-time webhook processing
-* Storefront tracking via CDN SDK
-* Settings page under WooCommerce > Settings > Segmentflow
+* Works on any WordPress site (page views + identify for logged-in users)
+* Conditional WooCommerce enrichment (cart context, currency, customer ID)
+* Connection flow from plugin settings or Segmentflow dashboard
+* Top-level Segmentflow admin menu with dynamic tabs
+* Settings: debug mode, consent required, API host override
+* WooCommerce auto-auth connection flow
 
 == Upgrade Notice ==
 
 = 1.0.0 =
-Initial release of Segmentflow for WooCommerce.
+Initial release of Segmentflow Connect.

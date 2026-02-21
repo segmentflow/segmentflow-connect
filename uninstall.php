@@ -1,11 +1,11 @@
 <?php
 /**
- * Segmentflow for WooCommerce uninstall handler.
+ * Segmentflow Connect uninstall handler.
  *
  * Fired when the plugin is deleted from WordPress admin.
  * Cleans up all plugin data from the database.
  *
- * @package Segmentflow_WooCommerce
+ * @package Segmentflow_Connect
  */
 
 // Exit if not called by WordPress.
@@ -13,18 +13,16 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
-// Remove all Segmentflow options.
-delete_option( 'segmentflow_write_key' );
-delete_option( 'segmentflow_organization_name' );
-delete_option( 'segmentflow_debug_mode' );
-delete_option( 'segmentflow_consent_required' );
-delete_option( 'segmentflow_api_host' );
+// Load the options class for cleanup.
+require_once plugin_dir_path( __FILE__ ) . 'includes/class-segmentflow-options.php';
 
-// Optionally notify the Segmentflow API of the disconnection.
-// This is best-effort -- if the API is unreachable, we still clean up locally.
+Segmentflow_Options::delete_all();
+delete_option( 'segmentflow_activated_at' );
+
+// Best-effort: notify the Segmentflow API of the disconnection.
 $api_host = 'https://api.segmentflow.ai';
 wp_remote_request(
-	$api_host . '/v1/integrations/woocommerce/disconnect',
+	$api_host . '/v1/integrations/disconnect',
 	[
 		'method'  => 'DELETE',
 		'timeout' => 5,

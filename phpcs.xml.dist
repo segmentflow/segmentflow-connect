@@ -1,10 +1,12 @@
 <?xml version="1.0"?>
-<ruleset name="Segmentflow WooCommerce">
-    <description>Coding standards for the Segmentflow WooCommerce plugin.</description>
+<ruleset name="Segmentflow Connect">
+    <description>Coding standards for the Segmentflow Connect plugin.</description>
 
     <!-- Scan these files -->
-    <file>segmentflow-woocommerce.php</file>
+    <file>segmentflow-connect.php</file>
     <file>includes/</file>
+    <file>admin/</file>
+    <file>integrations/</file>
     <file>uninstall.php</file>
     <file>tests/</file>
 
@@ -21,14 +23,14 @@
     <rule ref="WordPress.WP.I18n">
         <properties>
             <property name="text_domain" type="array">
-                <element value="segmentflow-woocommerce"/>
+                <element value="segmentflow-connect"/>
             </property>
         </properties>
     </rule>
 
     <!-- PHP Compatibility -->
     <rule ref="PHPCompatibilityWP"/>
-    <config name="testVersion" value="8.2-"/>
+    <config name="testVersion" value="8.5-"/>
 
     <!-- Minimum WP version for deprecated function checks -->
     <config name="minimum_wp_version" value="5.8"/>

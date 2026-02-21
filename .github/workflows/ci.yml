@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.2"
+          php-version: "8.5"
           tools: composer
       - run: composer install --no-interaction
       - run: composer lint
@@ -40,8 +40,8 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        php-version: ["8.2", "8.3", "8.4"]
-        wp-version: ["6.4", "latest"]
+        php-version: ["8.5"]
+        wp-version: ["6.7", "latest"]
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2

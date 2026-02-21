@@ -3,17 +3,11 @@ import eslint from "@eslint/js";
 import tseslint from "typescript-eslint";
 
 export default defineConfig([
-  globalIgnores([
-    "assets/**",
-    "vendor/**",
-    "node_modules/**",
-    "*.config.ts",
-    "*.config.mjs",
-  ]),
+  globalIgnores(["assets/**", "vendor/**", "node_modules/**", "*.config.ts", "*.config.mjs"]),
 
   // TypeScript files
   {
-    name: "segmentflow-woocommerce/typescript",
+    name: "segmentflow-connect/typescript",
     files: ["src/**/*.ts"],
     extends: [eslint.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: {

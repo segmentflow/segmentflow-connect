@@ -5,7 +5,7 @@
  * Uses the WordPress test suite scaffolding.
  * See: https://make.wordpress.org/core/handbook/testing/automated-testing/phpunit/
  *
- * @package Segmentflow_WooCommerce
+ * @package Segmentflow_Connect
  */
 
 // Composer autoloader.
@@ -26,7 +26,7 @@ if ( ! file_exists( $_tests_dir . '/includes/functions.php' ) ) {
 require_once $_tests_dir . '/includes/functions.php';
 
 /**
- * Load WooCommerce before the plugin.
+ * Load WooCommerce before the plugin (if available).
  */
 tests_add_filter(
 	'muplugins_loaded',
@@ -44,7 +44,7 @@ tests_add_filter(
 tests_add_filter(
 	'muplugins_loaded',
 	function () {
-		require dirname( __DIR__ ) . '/segmentflow-woocommerce.php';
+		require dirname( __DIR__ ) . '/segmentflow-connect.php';
 	}
 );
 

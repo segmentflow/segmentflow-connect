@@ -1,13 +1,17 @@
 /**
- * Segmentflow WooCommerce Admin Styles
+ * Segmentflow Connect Admin Styles
  *
- * Styles for the WooCommerce > Settings > Segmentflow tab.
+ * Styles for the Segmentflow settings page.
  *
- * @package Segmentflow_WooCommerce
+ * @package Segmentflow_Connect
  */
 
 .segmentflow-settings {
   max-width: 800px;
+}
+
+.segmentflow-tab-content {
+  margin-top: 20px;
 }
 
 .segmentflow-connection-status {
@@ -69,4 +73,18 @@
 
 .segmentflow-disconnect-btn:hover {
   background-color: #fef2f2;
+}
+
+.segmentflow-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.segmentflow-badge--active {
+  background-color: #edfcf2;
+  color: #065f46;
+  border: 1px solid #059669;
 }

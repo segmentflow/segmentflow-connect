@@ -1,10 +1,10 @@
 {
-  "name": "segmentflow/segmentflow-woocommerce-plugin",
-  "description": "Segmentflow for WooCommerce - AI-powered email marketing integration",
+  "name": "segmentflow/segmentflow-connect",
+  "description": "Segmentflow Connect - AI-powered email marketing integration for WordPress and WooCommerce",
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "require": {
-    "php": ">=8.2"
+    "php": ">=8.5"
   },
   "require-dev": {
     "dealerdirect/phpcodesniffer-composer-installer": "^1.0",

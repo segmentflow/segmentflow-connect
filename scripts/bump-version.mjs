@@ -5,11 +5,11 @@
  *   "version": "changeset version && node scripts/bump-version.mjs"
  *
  * Reads the version from package.json and syncs it to:
- * 1. segmentflow-woocommerce.php (plugin header "Version:" field)
- * 2. segmentflow-woocommerce.php (SEGMENTFLOW_WC_VERSION constant)
+ * 1. segmentflow-connect.php (plugin header "Version:" field)
+ * 2. segmentflow-connect.php (SEGMENTFLOW_VERSION constant)
  * 3. readme.txt ("Stable tag:" field)
  *
- * @package Segmentflow_WooCommerce
+ * @package Segmentflow_Connect
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
@@ -30,24 +30,21 @@ if (!version) {
 
 console.log(`Bumping version to ${version}`);
 
-// Update segmentflow-woocommerce.php plugin header.
-const pluginFile = join(rootDir, "segmentflow-woocommerce.php");
+// Update segmentflow-connect.php plugin header.
+const pluginFile = join(rootDir, "segmentflow-connect.php");
 let pluginContent = readFileSync(pluginFile, "utf-8");
 
 // Update "Version: X.Y.Z" in plugin header.
-pluginContent = pluginContent.replace(
-  /^ \* Version:\s+.+$/m,
-  ` * Version:     ${version}`,
-);
+pluginContent = pluginContent.replace(/^ \* Version:\s+.+$/m, ` * Version:     ${version}`);
 
-// Update SEGMENTFLOW_WC_VERSION constant.
+// Update SEGMENTFLOW_VERSION constant.
 pluginContent = pluginContent.replace(
-  /define\(\s*'SEGMENTFLOW_WC_VERSION',\s*'.+?'\s*\)/,
-  `define( 'SEGMENTFLOW_WC_VERSION', '${version}' )`,
+  /define\(\s*'SEGMENTFLOW_VERSION',\s*'.+?'\s*\)/,
+  `define( 'SEGMENTFLOW_VERSION', '${version}' )`,
 );
 
 writeFileSync(pluginFile, pluginContent);
-console.log(`  Updated segmentflow-woocommerce.php`);
+console.log(`  Updated segmentflow-connect.php`);
 
 // Update readme.txt "Stable tag: X.Y.Z".
 const readmeFile = join(rootDir, "readme.txt");

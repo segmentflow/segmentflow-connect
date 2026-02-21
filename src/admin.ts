@@ -1,15 +1,15 @@
 /**
- * Segmentflow WooCommerce Admin JS
+ * Segmentflow Connect Admin JS
  *
  * Handles the settings page UI interactions:
  * - Connect button behavior (redirect to Segmentflow dashboard)
  * - Connection status polling after auth return
- * - Disconnect confirmation
+ * - Disconnect confirmation and AJAX call
  *
- * Loaded via wp_enqueue_script() on the WooCommerce > Settings > Segmentflow tab.
+ * Loaded via wp_enqueue_script() on the Segmentflow settings page.
  * Compiled to IIFE bundle by tsdown, available as window.SegmentflowAdmin.
  *
- * @package Segmentflow_WooCommerce
+ * @package Segmentflow_Connect
  */
 
 interface SegmentflowAdminConfig {
@@ -54,7 +54,7 @@ function handleConnect(event: Event): void {
 
 /**
  * Handle the disconnect button click.
- * Shows a confirmation dialog before disconnecting.
+ * Shows a confirmation dialog before disconnecting via AJAX.
  */
 function handleDisconnect(event: Event): void {
   event.preventDefault();
@@ -63,8 +63,24 @@ function handleDisconnect(event: Event): void {
     return;
   }
 
-  // TODO: Implement AJAX disconnect call.
-  // POST to admin-ajax.php with action=segmentflow_disconnect and nonce.
+  const formData = new FormData();
+  formData.append("action", "segmentflow_disconnect");
+  formData.append("nonce", segmentflowAdmin.nonce);
+
+  fetch(segmentflowAdmin.ajaxUrl, {
+    method: "POST",
+    body: formData,
+  })
+    .then((response) => response.json())
+    .then((data: { success: boolean }) => {
+      if (data.success) {
+        window.location.reload();
+      }
+    })
+    .catch(() => {
+      // Reload anyway -- the disconnect may have succeeded.
+      window.location.reload();
+    });
 }
 
 /**
@@ -73,8 +89,8 @@ function handleDisconnect(event: Event): void {
  */
 function handleAuthReturn(_pollToken: string): void {
   // TODO: Implement polling for write key.
-  // Poll GET /integrations/woocommerce/status with the poll token.
-  // On success, reload the page to show connected state.
+  // The server-side handle_return() in Segmentflow_Auth processes the poll token.
+  // On success, the page reloads to show connected state.
 }
 
 // Initialize when DOM is ready.

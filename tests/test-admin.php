@@ -2,37 +2,59 @@
 /**
  * Tests for the admin settings page.
  *
- * @package Segmentflow_WooCommerce
+ * @package Segmentflow_Connect
  */
 
 /**
  * Class Test_Admin
  *
- * Tests the WooCommerce > Settings > Segmentflow tab.
+ * Tests the Segmentflow admin page and dynamic tabs.
  */
 class Test_Admin extends WP_UnitTestCase {
 
 	/**
-	 * Test that the Segmentflow tab is added to WooCommerce settings.
+	 * Test that the Segmentflow menu page is registered.
 	 */
-	public function test_settings_tab_registered(): void {
-		// TODO: Implement settings tab registration test.
-		$this->markTestIncomplete( 'Admin test not yet implemented.' );
+	public function test_menu_page_registered(): void {
+		$options = new Segmentflow_Options();
+		$admin   = new Segmentflow_Admin( $options );
+		$admin->register_hooks();
+
+		// Trigger admin_menu to register the page.
+		do_action( 'admin_menu' );
+
+		// Check that the menu page exists.
+		$this->assertNotEmpty( menu_page_url( 'segmentflow', false ) );
 	}
 
 	/**
-	 * Test that settings fields are correctly defined.
+	 * Test that Connection tab is always present.
 	 */
-	public function test_settings_fields_defined(): void {
-		// TODO: Implement settings fields test.
-		$this->markTestIncomplete( 'Admin test not yet implemented.' );
+	public function test_connection_tab_always_present(): void {
+		$options = new Segmentflow_Options();
+		$admin   = new Segmentflow_Admin( $options );
+		$tabs    = $admin->get_tabs();
+
+		$this->assertArrayHasKey( 'connection', $tabs );
 	}
 
 	/**
-	 * Test that admin scripts are only enqueued on the Segmentflow tab.
+	 * Test that Settings tab only appears when connected.
 	 */
-	public function test_scripts_enqueued_on_correct_page(): void {
-		// TODO: Implement script enqueue test.
-		$this->markTestIncomplete( 'Admin test not yet implemented.' );
+	public function test_settings_tab_requires_connection(): void {
+		$options = new Segmentflow_Options();
+
+		// Not connected -- no settings tab.
+		$admin = new Segmentflow_Admin( $options );
+		$tabs  = $admin->get_tabs();
+		$this->assertArrayNotHasKey( 'settings', $tabs );
+
+		// Connected -- settings tab appears.
+		$options->set( 'write_key', 'test_key_123' );
+		$tabs = $admin->get_tabs();
+		$this->assertArrayHasKey( 'settings', $tabs );
+
+		// Cleanup.
+		$options->delete( 'write_key' );
 	}
 }

@@ -2,7 +2,7 @@
  * Create a distributable plugin .zip file.
  *
  * Includes only the files needed for the plugin to run:
- * - PHP files (plugin root + includes/)
+ * - PHP files (plugin root + includes/ + admin/ + integrations/)
  * - Compiled JS (assets/js/)
  * - CSS (assets/css/)
  * - Images (assets/images/)
@@ -12,7 +12,7 @@
  *
  * Excludes development files (src/, tests/, node_modules/, vendor/, .github/, etc.)
  *
- * @package Segmentflow_WooCommerce
+ * @package Segmentflow_Connect
  */
 
 import { execSync } from "node:child_process";
@@ -23,15 +23,17 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 
-const zipName = "segmentflow-woocommerce.zip";
+const zipName = "segmentflow-connect.zip";
 
 // Files and directories to include in the zip.
 const includes = [
-  "segmentflow-woocommerce.php",
+  "segmentflow-connect.php",
   "uninstall.php",
   "readme.txt",
   "LICENSE",
   "includes/",
+  "admin/",
+  "integrations/",
   "assets/css/",
   "assets/js/",
   "assets/images/",

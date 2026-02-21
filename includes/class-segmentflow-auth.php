@@ -2,10 +2,14 @@
 /**
  * Segmentflow authentication handler.
  *
- * Manages the auto-auth connection flow between the WordPress plugin
- * and the Segmentflow dashboard.
+ * Manages the connection flow between the WordPress plugin and the Segmentflow
+ * dashboard. Supports three connection scenarios:
  *
- * @package Segmentflow_WooCommerce
+ * 1. Plain WordPress (no WooCommerce): Write key only, no WC auto-auth.
+ * 2. WordPress + WooCommerce (from plugin): Redirect through dashboard to WC auto-auth.
+ * 3. WordPress + WooCommerce (from dashboard): Dashboard initiates WC auto-auth.
+ *
+ * @package Segmentflow_Connect
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -13,61 +17,117 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Class Segmentflow_Auth
  *
- * Handles the auto-auth flow for connecting a WooCommerce store to Segmentflow.
- *
- * Two entry points:
- * 1. From WordPress Admin: User clicks "Connect to Segmentflow" in plugin settings.
- *    Plugin redirects to Segmentflow dashboard, which creates a PendingConnection with nonce,
- *    then redirects to WC auto-auth consent screen.
- * 2. From Segmentflow Dashboard: User enters store URL, dashboard redirects to
- *    WC auto-auth consent screen with nonce as user_id.
- *
- * After approval, WooCommerce POSTs credentials to the Segmentflow API callback.
- * The plugin polls for the write key using a temporary token.
+ * Handles the connection flow for linking a WordPress site to Segmentflow.
  */
 class Segmentflow_Auth {
 
 	/**
+	 * Options instance.
+	 */
+	private Segmentflow_Options $options;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param Segmentflow_Options $options The options instance.
+	 */
+	public function __construct( Segmentflow_Options $options ) {
+		$this->options = $options;
+	}
+
+	/**
+	 * Register WordPress hooks.
+	 */
+	public function register_hooks(): void {
+		// Handle the auth return query parameter.
+		add_action( 'admin_init', [ $this, 'maybe_handle_return' ] );
+
+		// Register AJAX handler for disconnect.
+		add_action( 'wp_ajax_segmentflow_disconnect', [ $this, 'ajax_disconnect' ] );
+	}
+
+	/**
 	 * Get the Segmentflow dashboard URL for initiating connection.
+	 *
+	 * Detects whether WooCommerce is active and routes to the appropriate
+	 * connection endpoint.
 	 *
 	 * @return string The redirect URL to the Segmentflow dashboard.
 	 */
-	public static function get_connect_url(): string {
+	public function get_connect_url(): string {
 		$store_url  = home_url();
-		$return_url = admin_url( 'admin.php?page=wc-settings&tab=segmentflow&connected=1' );
-		$api_host   = Segmentflow_API::get_api_host();
-		$app_host   = str_replace( 'api.', 'app.', $api_host );
+		$return_url = admin_url( 'admin.php?page=segmentflow&connected=1' );
+		$app_host   = $this->options->get_app_host();
 
+		// Route based on platform.
+		if ( Segmentflow_Helper::is_woocommerce_active() ) {
+			// Scenario 2: WooCommerce from plugin -- redirect to dashboard WC connect.
+			return add_query_arg(
+				[
+					'store_url'  => rawurlencode( $store_url ),
+					'return_url' => rawurlencode( $return_url ),
+				],
+				$app_host . '/connect/woocommerce'
+			);
+		}
+
+		// Scenario 1: Plain WordPress -- redirect to dashboard WP connect.
 		return add_query_arg(
 			[
-				'store_url'  => rawurlencode( $store_url ),
+				'site_url'   => rawurlencode( $store_url ),
 				'return_url' => rawurlencode( $return_url ),
 			],
-			$app_host . '/integrations/woocommerce/connect'
+			$app_host . '/connect/wordpress'
 		);
+	}
+
+	/**
+	 * Check for and handle the auth return redirect.
+	 *
+	 * Called on admin_init. Detects the 'connected' query parameter and
+	 * processes the poll token to retrieve the write key.
+	 */
+	public function maybe_handle_return(): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Auth return from external redirect.
+		if ( ! isset( $_GET['page'] ) || 'segmentflow' !== $_GET['page'] ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Auth return from external redirect.
+		if ( ! isset( $_GET['connected'] ) || '1' !== $_GET['connected'] ) {
+			return;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Auth return from external redirect.
+		$poll_token = isset( $_GET['poll_token'] ) ? sanitize_text_field( wp_unslash( $_GET['poll_token'] ) ) : '';
+
+		if ( ! empty( $poll_token ) ) {
+			$this->handle_return( $poll_token );
+		}
 	}
 
 	/**
 	 * Handle the return from the auth flow.
 	 *
-	 * Called when the user is redirected back to WP admin after approving the connection.
-	 * Extracts the poll token from the URL and begins polling for the write key.
+	 * Polls the Segmentflow API for connection status and stores the write key.
 	 *
 	 * @param string $poll_token The temporary token for polling connection status.
 	 * @return bool Whether the write key was successfully retrieved and stored.
 	 */
-	public static function handle_return( string $poll_token ): bool {
-		// TODO: Implement polling for write key.
-		// Poll GET /integrations/woocommerce/status with the temporary token.
-		// On success, store write key in wp_options.
-		$status = Segmentflow_API::check_status( $poll_token );
+	public function handle_return( string $poll_token ): bool {
+		$api    = new Segmentflow_API( $this->options );
+		$status = $api->check_status( $poll_token );
 
 		if ( ! empty( $status['connected'] ) && ! empty( $status['write_key'] ) ) {
-			update_option( 'segmentflow_write_key', sanitize_text_field( $status['write_key'] ) );
+			$this->options->set( 'write_key', sanitize_text_field( $status['write_key'] ) );
 
 			if ( ! empty( $status['organization_name'] ) ) {
-				update_option( 'segmentflow_organization_name', sanitize_text_field( $status['organization_name'] ) );
+				$this->options->set( 'organization_name', sanitize_text_field( $status['organization_name'] ) );
 			}
+
+			// Store which platform was connected.
+			$platform = Segmentflow_Helper::get_platform();
+			$this->options->set( 'connected_platform', $platform );
 
 			return true;
 		}
@@ -76,30 +136,45 @@ class Segmentflow_Auth {
 	}
 
 	/**
-	 * Check if the store is currently connected to Segmentflow.
+	 * AJAX handler for disconnect.
+	 */
+	public function ajax_disconnect(): void {
+		check_ajax_referer( 'segmentflow-admin', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'segmentflow-connect' ) ] );
+		}
+
+		$this->disconnect();
+		wp_send_json_success( [ 'message' => __( 'Disconnected from Segmentflow.', 'segmentflow-connect' ) ] );
+	}
+
+	/**
+	 * Check if the site is currently connected to Segmentflow.
 	 *
 	 * @return bool
 	 */
-	public static function is_connected(): bool {
-		$write_key = get_option( 'segmentflow_write_key', '' );
-		return ! empty( $write_key );
+	public function is_connected(): bool {
+		return $this->options->is_connected();
 	}
 
 	/**
 	 * Disconnect from Segmentflow.
 	 *
-	 * Removes the write key and connection settings. Does not remove webhooks
-	 * or API credentials on the Segmentflow side (that's handled by the API).
+	 * Removes the write key and connection settings. Notifies the Segmentflow
+	 * API of the disconnection (best-effort).
 	 *
 	 * @return bool Whether the disconnection was successful.
 	 */
-	public static function disconnect(): bool {
-		// Notify the Segmentflow API.
-		Segmentflow_API::disconnect();
+	public function disconnect(): bool {
+		// Notify the Segmentflow API (best-effort).
+		$api = new Segmentflow_API( $this->options );
+		$api->disconnect();
 
 		// Remove local connection data.
-		delete_option( 'segmentflow_write_key' );
-		delete_option( 'segmentflow_organization_name' );
+		$this->options->delete( 'write_key' );
+		$this->options->delete( 'organization_name' );
+		$this->options->delete( 'connected_platform' );
 
 		return true;
 	}

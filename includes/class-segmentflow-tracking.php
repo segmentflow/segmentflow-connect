@@ -3,8 +3,10 @@
  * Segmentflow storefront tracking.
  *
  * Injects the Segmentflow CDN SDK into the storefront via wp_head.
+ * Works on ANY WordPress site -- page views, identify for logged-in users.
+ * WooCommerce-specific context is added via the 'segmentflow_tracking_context' filter.
  *
- * @package Segmentflow_WooCommerce
+ * @package Segmentflow_Connect
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -13,57 +15,87 @@ defined( 'ABSPATH' ) || exit;
  * Class Segmentflow_Tracking
  *
  * Handles injection of the Segmentflow CDN SDK script into the storefront.
- * The SDK is loaded from cdn.segmentflow.ai and initialized with the store's
- * write key, customer identity, and WooCommerce context.
+ * The SDK is loaded from cdn.segmentflow.ai and initialized with the site's
+ * write key and WordPress user context.
  *
- * Only active when a write key is configured (i.e., the store is connected).
+ * Integration-specific context (WooCommerce cart, currency, etc.) is added
+ * via the 'segmentflow_tracking_context' filter, keeping this class
+ * platform-agnostic.
  */
 class Segmentflow_Tracking {
 
 	/**
-	 * Initialize tracking hooks.
+	 * Options instance.
 	 */
-	public static function init(): void {
+	private Segmentflow_Options $options;
+
+	/**
+	 * Constructor.
+	 *
+	 * @param Segmentflow_Options $options The options instance.
+	 */
+	public function __construct( Segmentflow_Options $options ) {
+		$this->options = $options;
+	}
+
+	/**
+	 * Register WordPress hooks.
+	 */
+	public function register_hooks(): void {
 		// Only inject on the frontend, not in admin.
 		if ( is_admin() ) {
 			return;
 		}
 
-		add_action( 'wp_head', [ __CLASS__, 'inject_sdk' ], 1 );
+		add_action( 'wp_head', [ $this, 'inject_sdk' ], 1 );
 	}
 
 	/**
 	 * Inject the Segmentflow SDK script into the page head.
 	 *
-	 * Outputs the SDK loader script with WooCommerce context including:
+	 * Outputs the SDK loader script with WordPress context including:
 	 * - Write key from wp_options
-	 * - Customer identity (if logged in)
-	 * - Cart hash
-	 * - Store currency
+	 * - WordPress user identity (if logged in)
+	 * - Site URL and locale
+	 *
+	 * Integration-specific context (WooCommerce cart, currency, etc.) is
+	 * injected via the 'segmentflow_tracking_context' filter.
 	 */
-	public static function inject_sdk(): void {
-		$write_key = get_option( 'segmentflow_write_key', '' );
+	public function inject_sdk(): void {
+		$write_key = $this->options->get_write_key();
 
 		// Don't inject if not connected.
 		if ( empty( $write_key ) ) {
 			return;
 		}
 
-		$api_host         = get_option( 'segmentflow_api_host', 'https://api.segmentflow.ai' );
-		$debug_mode       = get_option( 'segmentflow_debug_mode', false );
-		$consent_required = get_option( 'segmentflow_consent_required', false );
+		$api_host         = $this->options->get_api_host();
+		$debug_mode       = $this->options->is_debug_mode();
+		$consent_required = $this->options->is_consent_required();
 
-		// Build WooCommerce context data.
-		$customer_id    = is_user_logged_in() ? get_current_user_id() : null;
-		$customer_email = is_user_logged_in() ? wp_get_current_user()->user_email : null;
-		$cart_hash      = ( function_exists( 'WC' ) && WC()->cart ) ? WC()->cart->get_cart_hash() : null;
-		$currency       = function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : 'USD';
+		// WordPress user context (available on ANY WordPress site).
+		$user_id    = is_user_logged_in() ? get_current_user_id() : null;
+		$user_email = is_user_logged_in() ? wp_get_current_user()->user_email : null;
 
-		// TODO: Implement full SDK injection script.
-		// This stub outputs the basic structure. The full implementation will include
-		// the async script loader, identify call, and context enrichment.
+		/**
+		 * Filter the tracking context.
+		 *
+		 * Allows integrations (WooCommerce, CF7, etc.) to add their own
+		 * context data to the SDK initialization.
+		 *
+		 * @param array $context The tracking context array.
+		 */
+		$extra_context = apply_filters( 'segmentflow_tracking_context', [] );
+		$has_extra     = ! empty( $extra_context );
+
+		// Determine user ID prefix based on active integrations.
+		$prefix = 'wp_';
+		if ( $has_extra && ! empty( $extra_context['platform'] ) && $extra_context['platform'] === 'woocommerce' ) {
+			$prefix = 'wc_';
+		}
+
 		?>
-		<!-- Segmentflow for WooCommerce v<?php echo esc_html( SEGMENTFLOW_WC_VERSION ); ?> -->
+		<!-- Segmentflow Connect v<?php echo esc_html( SEGMENTFLOW_VERSION ); ?> -->
 		<script>
 		(function() {
 			var config = {
@@ -73,36 +105,40 @@ class Segmentflow_Tracking {
 				consentRequired: <?php echo $consent_required ? 'true' : 'false'; ?>
 			};
 
-			var wcContext = {
-				storeUrl: <?php echo wp_json_encode( home_url() ); ?>,
-				customerId: <?php echo wp_json_encode( $customer_id ); ?>,
-				customerEmail: <?php echo wp_json_encode( $customer_email ); ?>,
-				cartHash: <?php echo wp_json_encode( $cart_hash ); ?>,
-				currency: <?php echo wp_json_encode( $currency ); ?>
+			var wpContext = {
+				siteUrl: <?php echo wp_json_encode( home_url() ); ?>,
+				userId: <?php echo wp_json_encode( $user_id ); ?>,
+				userEmail: <?php echo wp_json_encode( $user_email ); ?>,
+				locale: <?php echo wp_json_encode( get_locale() ); ?>
 			};
 
+			<?php if ( $has_extra ) : ?>
+			var integrationContext = <?php echo wp_json_encode( $extra_context ); ?>;
+			<?php endif; ?>
+
 			var script = document.createElement('script');
-			script.src = config.host.replace('api.', 'cdn.') + '/sdk.js';
+			script.src = 'https://cdn.segmentflow.ai/sdk.js';
 			script.async = true;
 			script.onload = function() {
 				if (typeof window.segmentflow === 'undefined') return;
 
 				window.segmentflow.init(config);
 
-				if (wcContext.customerId) {
-					window.segmentflow.identify('wc_' + wcContext.customerId, {
-						email: wcContext.customerEmail,
-						woocommerce_customer_id: wcContext.customerId
-					});
+				if (wpContext.userId) {
+					var traits = { email: wpContext.userEmail };
+					<?php if ( $has_extra ) : ?>
+					if (typeof integrationContext !== 'undefined' && integrationContext.traits) {
+						Object.assign(traits, integrationContext.traits);
+					}
+					<?php endif; ?>
+					window.segmentflow.identify(<?php echo wp_json_encode( $prefix ); ?> + wpContext.userId, traits);
 				}
 
-				if (wcContext.cartHash) {
-					window.segmentflow.setContext({
-						cart_hash: wcContext.cartHash,
-						store_url: wcContext.storeUrl,
-						currency: wcContext.currency
-					});
+				<?php if ( $has_extra ) : ?>
+				if (typeof integrationContext !== 'undefined' && integrationContext.context) {
+					window.segmentflow.setContext(integrationContext.context);
 				}
+				<?php endif; ?>
 			};
 			document.head.appendChild(script);
 		})();

@@ -2,7 +2,7 @@
 # This file is distributed under the GPL v2 or later.
 msgid ""
 msgstr ""
-"Project-Id-Version: Segmentflow for WooCommerce 1.0.0\n"
+"Project-Id-Version: Segmentflow Connect 1.0.0\n"
 "Report-Msgid-Bugs-To: https://segmentflow.ai/support\n"
 "POT-Creation-Date: 2026-02-21 00:00:00+00:00\n"
 "MIME-Version: 1.0\n"
@@ -12,12 +12,12 @@ msgstr ""
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "X-Generator: Segmentflow\n"
-"X-Domain: segmentflow-woocommerce\n"
+"X-Domain: segmentflow-connect\n"
 
 #. Plugin Name of the plugin
-msgid "Segmentflow for WooCommerce"
+msgid "Segmentflow Connect"
 msgstr ""
 
 #. Description of the plugin
-msgid "Connect your WooCommerce store to Segmentflow for AI-powered email marketing and customer segmentation."
+msgid "Connect your WordPress site or WooCommerce store to Segmentflow for AI-powered email marketing, customer segmentation, and revenue attribution."
 msgstr ""

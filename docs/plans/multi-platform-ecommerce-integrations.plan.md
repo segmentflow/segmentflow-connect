@@ -2,7 +2,7 @@
 
 **Created**: 2026-02-21
 **Status**: Draft
-**Estimated Effort**: Phase 1 (WooCommerce + WordPress Plugin): ~17.5 working days | Phase 2 (BigCommerce): ~5-7 days
+**Estimated Effort**: Phase 1 (WooCommerce + Segmentflow Connect Plugin): ~18.5 working days | Phase 2 (BigCommerce): ~5-7 days
 **Last Updated**: 2026-02-21
 
 ## Changelog
@@ -10,9 +10,9 @@
 | Date | Changes |
 |------|---------|
 | 2026-02-21 | Initial plan created. WooCommerce as first integration, BigCommerce as follow-up. |
-| 2026-02-21 | Updated WooCommerce approach: WordPress plugin (`segmentflow-woocommerce`) in separate public repo, CDN-loaded SDK, dual-direction auto-auth connection flow, WooCommerce SDK plugin. |
-| 2026-02-21 | Added comprehensive repo setup for `segmentflow-woocommerce`: TypeScript (tsdown IIFE build), ESLint 9, Prettier, PHPCS + WordPress Coding Standards, PHPUnit with WP test suite, Changesets for automated releases, GitHub Actions CI/CD (lint + test matrix + WordPress.org SVN deploy), Husky + lint-staged. |
-| 2026-02-21 | Resolved open questions: Minimum PHP 8.2 (test matrix 8.2/8.3/8.4). Auto-auth callback secured via nonce + PendingConnection record; plugin polls for write key. `checkout_started` event generated client-side via SDK WooCommercePlugin. Settings page under WooCommerce > Settings tab. Deactivation stops SDK only; full cleanup on uninstall. Plugin repo is `segmentflow-woocommerce-plugin`. WordPress.org credentials not yet available. |
+| 2026-02-21 | Updated WooCommerce approach: WordPress plugin (`segmentflow-woocommerce-plugin`) in separate public repo, CDN-loaded SDK, dual-direction auto-auth connection flow, WooCommerce SDK plugin. |
+| 2026-02-21 | Added comprehensive repo setup for `segmentflow-woocommerce-plugin`: TypeScript (tsdown IIFE build), ESLint 9, Prettier, PHPCS + WordPress Coding Standards, PHPUnit with WP test suite, Changesets for automated releases, GitHub Actions CI/CD (lint + test matrix + WordPress.org SVN deploy), Husky + lint-staged. |
+| 2026-02-21 | **Unified plugin redesign**: Renamed from `segmentflow-woocommerce-plugin` to `segmentflow-connect`. Single WordPress plugin works on ANY WordPress site (page views + identify for logged-in users) with conditional WooCommerce enrichment (cart context, WC customer identity, currency). Adopted Smaily Connect-style orchestrator pattern with `integrations/` directory for conditional loading. Repo renamed to `segmentflow-connect`. Plugin supports plain WordPress sites in Phase 1 (no WooCommerce required). Future integrations (CF7, Elementor, etc.) drop into `integrations/` without restructuring. Updated: repo structure, plugin architecture, connection flows, dashboard UI, implementation timeline (+1 day), new files list, Phase 3 scope, testing strategy, success criteria. |
 
 ---
 
@@ -40,9 +40,9 @@ All four features depend on deep integration with the merchant's e-commerce plat
 | **Smaily** | Open-source plugins/modules per platform (WordPress, WooCommerce, Drupal, OpenCart, Magento, PrestaShop). Each is a separate PHP codebase on GitHub. | ~15 |
 
 Segmentflow should follow a hybrid approach:
-- **WooCommerce**: WordPress plugin (`segmentflow-woocommerce`) distributed via WordPress.org plugin directory + server-side REST API. Plugin handles auto-auth connection and CDN-loaded storefront tracking. Separate public GPL v2+ repository.
+- **WordPress + WooCommerce**: A single unified WordPress plugin (`segmentflow-connect`) distributed via WordPress.org. Works on ANY WordPress site (page views, identity for logged-in users). Conditionally activates WooCommerce features (cart context, WC customer identity, auto-auth connection flow) when WooCommerce is detected. Future integrations (Contact Form 7, Elementor, etc.) drop into the same plugin via an `integrations/` directory pattern (inspired by Smaily Connect's architecture). Separate public GPL v2+ repository.
 - **BigCommerce**: Server-side REST API integration (no app store approval needed)
-- **WordPress/Drupal**: Lightweight plugins for subscriber sync (future phase)
+- **WordPress form plugins**: Future integration modules within `segmentflow-connect` (CF7, Gravity Forms, WPForms, Elementor)
 - **Long tail**: Zapier/Make integration as a force multiplier (future phase)
 
 ---
@@ -353,13 +353,13 @@ The integrations page (`/integrations/page.tsx`) renders a grid of integration c
 
 | Aspect | Shopify | WooCommerce |
 |---|---|---|
-| **Connection** | OAuth 2.0 with app store review | WordPress plugin with auto-auth (`/wc-auth/v1/authorize`), or direct auto-auth from dashboard |
+| **Connection** | OAuth 2.0 with app store review | Unified WordPress plugin (`segmentflow-connect`) with WC auto-auth (`/wc-auth/v1/authorize`), or direct auto-auth from dashboard. Plain WordPress sites connect via write key only (no WC auth needed). |
 | **Authentication** | OAuth access token | Consumer Key + Consumer Secret (HTTP Basic or OAuth 1.0a) |
 | **Webhook registration** | REST API call with HMAC secret derived from client secret | REST API call with user-provided webhook secret |
 | **Webhook verification** | HMAC-SHA256 with Shopify client secret | HMAC-SHA256 with webhook secret via `X-WC-Webhook-Signature` header |
 | **Data endpoints** | `/admin/api/2024-10/customers.json` | `/wp-json/wc/v3/customers` |
 | **Pagination** | Link header (cursor-based) | `X-WP-Total` / `X-WP-TotalPages` headers (page-based) |
-| **Storefront tracking** | Theme App Extension + Web Pixel | WordPress plugin injects CDN-hosted SDK (`cdn.segmentflow.ai/sdk.js`) with WooCommerce plugin |
+| **Storefront tracking** | Theme App Extension + Web Pixel | Unified WordPress plugin (`segmentflow-connect`) injects CDN-hosted SDK (`cdn.segmentflow.ai/sdk.js`). Core tracking (page views, identify) works on any WP site. WooCommerce plugin enriches with cart hash, currency, WC customer ID when WC is active. |
 | **GDPR requirements** | Mandatory compliance webhooks | Not required by platform |
 | **Product images** | `product.images[].src` | `product.images[].src` (same structure) |
 | **Brand/Logo** | Theme settings API | WordPress site icon API or URL scraping |
@@ -394,14 +394,10 @@ For Segmentflow, we will require HTTPS and use Basic Auth for simplicity.
 
 WooCommerce provides an authentication endpoint at `/wc-auth/v1/authorize` that allows apps to request API key generation from users without manual key creation. This works similarly to OAuth:
 
-1. Segmentflow creates a `PendingConnection` record with a cryptographically random nonce (mapped to the organization ID) and a short TTL (e.g., 10 minutes)
-2. Segmentflow redirects the user to `{store_url}/wc-auth/v1/authorize?app_name=Segmentflow&scope=read_write&user_id={nonce}&return_url={dashboard_url}&callback_url={api_callback_url}`
-3. User approves in their WooCommerce admin
-4. WooCommerce POSTs `{ user_id (nonce), consumer_key, consumer_secret, key_permissions }` to our `callback_url`
-5. Segmentflow verifies the nonce against `PendingConnection`, resolves to the organization ID, and stores credentials
-6. User is redirected back to `return_url`
-
-**Security note**: The WooCommerce auto-auth callback is unauthenticated (WooCommerce does not sign it). The nonce in the `user_id` parameter acts as a CSRF-like token: it must exist in the `PendingConnection` table, be unexpired, and be unused. This prevents spoofed callback attacks. The nonce is single-use and deleted after successful verification.
+1. Segmentflow redirects the user to `{store_url}/wc-auth/v1/authorize?app_name=Segmentflow&scope=read_write&user_id={orgId}&return_url={dashboard_url}&callback_url={api_callback_url}`
+2. User approves in their WooCommerce admin
+3. WooCommerce POSTs the generated `consumer_key` and `consumer_secret` to our `callback_url`
+4. User is redirected back to `return_url`
 
 **We should implement BOTH approaches**:
 - **Primary**: Auto-auth endpoint (better UX, similar to OAuth)
@@ -517,8 +513,8 @@ New file: `services/node/api/src/routes/v1/integrations/woocommerce.ts`
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | `POST` | `/integrations/woocommerce/connect` | Session | Submit store URL + API credentials (manual method) |
-| `POST` | `/integrations/woocommerce/authorize` | Session | Initiate WC auto-auth flow: creates `PendingConnection` with nonce, returns redirect URL |
-| `POST` | `/integrations/woocommerce/callback` | Public (nonce-verified) | Receive auto-auth callback with generated keys; verifies nonce from `user_id` against `PendingConnection` |
+| `POST` | `/integrations/woocommerce/authorize` | Session | Initiate WC auto-auth flow (returns redirect URL) |
+| `POST` | `/integrations/woocommerce/callback` | Public | Receive auto-auth callback with generated keys |
 | `GET` | `/integrations/woocommerce/status` | Session | Connection status, sync progress, store metadata |
 | `POST` | `/integrations/woocommerce/sync` | Session | Trigger manual re-sync |
 | `DELETE` | `/integrations/woocommerce/disconnect` | Session | Remove integration, delete webhooks, cleanup |
@@ -549,27 +545,25 @@ Core service class. Responsibilities:
 
 **Connection (auto-auth -- from dashboard):**
 1. User enters store URL in Segmentflow dashboard
-2. API creates a `PendingConnection` record with a cryptographically random nonce, the organization ID, store URL, and a short TTL (e.g., 10 minutes)
-3. Generate auth URL: `{storeUrl}/wc-auth/v1/authorize?app_name=Segmentflow&scope=read_write&user_id={nonce}&return_url={dashboardUrl}&callback_url={apiCallbackUrl}`
-4. Redirect user to their WooCommerce consent screen
-5. User clicks "Approve"
-6. WooCommerce POSTs `{ user_id (nonce), consumer_key, consumer_secret, key_permissions }` to callback
-7. API verifies the nonce exists in `PendingConnection`, is unexpired, and has not been used. Resolves it to the organization ID.
-8. Store credentials and proceed with connection steps 2-8 from the manual flow above. Delete the `PendingConnection` record.
-9. If the plugin is not installed, webhooks + REST sync still work; dashboard shows a prompt to install the plugin for storefront tracking
+2. Generate auth URL: `{storeUrl}/wc-auth/v1/authorize?app_name=Segmentflow&scope=read_write&user_id={orgId}&return_url={dashboardUrl}&callback_url={apiCallbackUrl}`
+3. Redirect user to their WooCommerce consent screen
+4. User clicks "Approve"
+5. WooCommerce POSTs `{ consumer_key, consumer_secret, key_permissions }` to callback
+6. Store credentials and proceed with connection steps 2-8 above
+7. If the WordPress plugin is installed, the write key is returned and stored in `wp_options` for SDK injection
+8. If the plugin is not installed, webhooks + REST sync still work; dashboard shows a prompt to install the plugin for storefront tracking
 
 **Connection (auto-auth -- from WordPress plugin):**
 1. User clicks "Connect to Segmentflow" in plugin settings page
 2. Plugin redirects to `https://app.segmentflow.ai/integrations/woocommerce/connect?store_url={storeUrl}&return_url={wpAdminUrl}`
 3. User logs in / selects organization in Segmentflow dashboard
-4. API creates a `PendingConnection` record with a cryptographically random nonce, the organization ID, store URL, and a short TTL (e.g., 10 minutes)
-5. Segmentflow generates the WC auto-auth URL (using the nonce as `user_id`) and redirects to the store's consent screen
-6. User clicks "Approve" on the WooCommerce consent screen
-7. WooCommerce POSTs `{ user_id (nonce), consumer_key, consumer_secret, key_permissions }` to callback
-8. API verifies the nonce, resolves to the organization ID, stores credentials, and proceeds with connection steps 2-8 from the manual flow. Deletes the `PendingConnection` record.
-9. User is redirected back to WP admin settings page with a success parameter and a temporary token
-10. Plugin uses the temporary token to poll `GET /integrations/woocommerce/status` for the write key
-11. Once the write key is received, plugin stores it in `wp_options` and begins injecting the CDN SDK into the storefront
+4. Segmentflow generates the WC auto-auth URL and redirects to the store's consent screen
+5. User clicks "Approve" on the WooCommerce consent screen
+6. WooCommerce POSTs `{ consumer_key, consumer_secret, key_permissions }` to callback
+7. Store credentials and proceed with connection steps 2-8 above
+8. Write key is returned to the plugin and stored in `wp_options`
+9. User is redirected back to WP admin settings page with success parameter
+10. Plugin immediately begins injecting the CDN SDK into the storefront
 
 **Historical Sync:**
 1. Paginated `GET /wp-json/wc/v3/customers?per_page=100&page={n}` (use `X-WP-TotalPages` for pagination)
@@ -685,7 +679,7 @@ The WooCommerce segment templates mirror the Shopify templates using the same ev
 | Recent First-Time Buyers | `order_paid` == 1 AND `order_paid` in last 30 days | `order_paid` |
 | Churning Customers | `order_paid` >= 2 AND no `order_paid` in 90 days | `order_paid` |
 | Active Customers | `order_paid` in last 30 days | `order_paid` |
-| Abandoned Cart | `checkout_started` in 1 day AND no `order_paid` in 1 day | `checkout_started` (generated client-side by SDK `WooCommercePlugin` detecting checkout page; requires WordPress plugin installed) |
+| Abandoned Cart | `checkout_started` in 1 day AND no `order_paid` in 1 day | `checkout_started` |
 | Awaiting Shipment | `order_paid` in 30 days AND no `order_completed` in 30 days | Both |
 | Orders Fulfilled | `order_completed` >= 1 | `order_completed` |
 | Order Cancelled | `order_cancelled` >= 1 | `order_cancelled` |
@@ -755,7 +749,7 @@ Four states (mirroring Shopify card pattern):
 **Not Connected:**
 - Store URL input field (full URL, not just subdomain)
 - "Connect WooCommerce" button (initiates auto-auth: redirect to WC consent screen)
-- Note: "For storefront tracking, install the [Segmentflow for WooCommerce](https://wordpress.org/plugins/segmentflow-woocommerce/) plugin"
+- Note: "For storefront tracking, install the [Segmentflow Connect](https://wordpress.org/plugins/segmentflow-connect/) plugin"
 - "Connect with API Keys" expandable fallback (Consumer Key + Consumer Secret fields, for stores that block auto-auth)
 - Benefits list (customer sync, order history, real-time events, pre-built segments)
 
@@ -765,13 +759,19 @@ Four states (mirroring Shopify card pattern):
 **Connected (without plugin):**
 - Store name, URL, WC version, currency
 - Sync status badge
-- Warning banner: "Storefront tracking is not active. Install the Segmentflow for WooCommerce plugin to capture page views and add-to-cart events."
+- Warning banner: "Storefront tracking is not active. Install the Segmentflow Connect plugin to capture page views and add-to-cart events."
 - "Sync Now" and "Disconnect" buttons
 
-**Connected (with plugin):**
+**Connected (with plugin, plain WordPress):**
+- Site name, URL
+- Green badge: "Storefront tracking active (page views + identify)"
+- Note: "WooCommerce not detected. Install WooCommerce for order tracking, customer sync, and revenue attribution."
+- "Disconnect" button
+
+**Connected (with plugin, WooCommerce active):**
 - Store name, URL, WC version, currency
 - Sync status badge
-- Green badge: "Storefront tracking active"
+- Green badge: "Storefront tracking active (full WooCommerce enrichment)"
 - "Sync Now" and "Disconnect" buttons
 
 ##### `IntegrationBadge.tsx` -- Uncomment WooCommerce
@@ -782,23 +782,42 @@ The existing badge component has a commented-out WooCommerce case. Uncomment it.
 
 The onboarding step already branches on `primaryPlatform === "woocommerce"`. Replace the "Coming Soon" placeholder with the actual WooCommerce connection form.
 
-#### 10. Storefront Tracking (WordPress Plugin + CDN SDK)
+#### 10. Storefront Tracking (Unified WordPress Plugin + CDN SDK)
 
 ##### Architecture Overview
 
-WooCommerce storefront tracking mirrors the Shopify approach but uses a WordPress plugin instead of a Theme App Extension:
+Storefront tracking uses a **unified WordPress plugin** (`segmentflow-connect`) that works on ANY WordPress site, with WooCommerce-specific enrichment activating conditionally. This follows the Smaily Connect pattern: one plugin, conditional integration loading.
 
-| | Shopify | WooCommerce |
-|---|---|---|
-| **Delivery mechanism** | Theme App Extension (`segmentflow-embed`) | WordPress plugin (`segmentflow-woocommerce`) |
-| **SDK source** | `cdn.segmentflow.ai/sdk.js` | `cdn.segmentflow.ai/sdk.js` (same) |
-| **Platform detection** | `ShopifyPlugin` (`shopify.plugin.ts`) | `WooCommercePlugin` (`woocommerce.plugin.ts`) |
-| **Write key provisioning** | Shopify App Metafield (auto) | `wp_options` table (set during auto-auth callback) |
-| **Customer identity** | `window.__st.cid` + Liquid `{{ customer.id }}` | WooCommerce session / PHP `wp_get_current_user()` rendered inline |
-| **Cart token** | `GET /cart.json` + DOM scraping | WC cart fragments / `wc_get_cart_hash()` rendered inline |
-| **Repository** | Same repo (`extensions/segmentflow-embed/`) | Separate public repo (`segmentflow-woocommerce`) |
+| | Shopify | WordPress (any) | WordPress + WooCommerce |
+|---|---|---|---|
+| **Delivery mechanism** | Theme App Extension (`segmentflow-embed`) | `segmentflow-connect` plugin (core tracking) | `segmentflow-connect` plugin (core + WC enrichment) |
+| **SDK source** | `cdn.segmentflow.ai/sdk.js` | `cdn.segmentflow.ai/sdk.js` (same) | `cdn.segmentflow.ai/sdk.js` (same) |
+| **Platform detection** | `ShopifyPlugin` (`shopify.plugin.ts`) | N/A (core SDK handles page views) | `WooCommercePlugin` (`woocommerce.plugin.ts`) |
+| **Write key provisioning** | Shopify App Metafield (auto) | `wp_options` (set during connection flow) | `wp_options` (set during WC auto-auth callback) |
+| **Customer identity** | `window.__st.cid` + Liquid `{{ customer.id }}` | PHP `wp_get_current_user()` rendered inline (prefix: `wp_`) | PHP `wp_get_current_user()` rendered inline (prefix: `wc_`) + WC customer context |
+| **Cart context** | `GET /cart.json` + DOM scraping | N/A | `WC()->cart->get_cart_hash()` + `get_woocommerce_currency()` rendered inline |
+| **Repository** | Same repo (`extensions/segmentflow-embed/`) | Separate public repo (`segmentflow-connect`) | Same plugin, `integrations/woocommerce/` activates conditionally |
 
-##### Separate Repository: `segmentflow-woocommerce`
+**Two-layer tracking architecture:**
+
+```
+Layer 1: Core Tracking (ALWAYS active on any WordPress site)
+├── class-segmentflow-tracking.php hooks into wp_head
+├── Injects CDN SDK script tag
+├── Provides: write key, API host, debug/consent settings
+├── Reads: get_current_user_id(), wp_get_current_user()->user_email, home_url(), get_locale()
+├── Identifies logged-in users as wp_{userId}
+└── Page views, referrer, browser context work automatically
+
+Layer 2: WooCommerce Enrichment (CONDITIONAL, only when WC is active)
+├── class-segmentflow-wc-tracking.php adds WC context via segmentflow_tracking_context filter
+├── Adds: cart hash, currency, WC customer ID, store URL
+├── Changes user ID prefix from wp_ to wc_
+├── Reads: WC()->cart->get_cart_hash(), get_woocommerce_currency()
+└── SDK WooCommercePlugin detects WC globals and enriches events with context.woocommerce
+```
+
+##### Separate Repository: `segmentflow-connect`
 
 **Why a separate repo:**
 1. **WordPress.org requires it** -- plugin directory pulls from SVN; standard practice is public Git repo as source of truth
@@ -810,82 +829,106 @@ WooCommerce storefront tracking mirrors the Shopify approach but uses a WordPres
 **Repository structure:**
 
 ```
-segmentflow-woocommerce/
-├── segmentflow-woocommerce.php             # Main plugin file (plugin header, hooks)
-├── includes/
-│   ├── class-segmentflow-admin.php         # Admin settings page
-│   ├── class-segmentflow-tracking.php      # wp_head hook: inject CDN SDK
-│   ├── class-segmentflow-auth.php          # Auto-auth flow handler
-│   └── class-segmentflow-api.php           # HTTP client for Segmentflow API
-├── src/                                     # TypeScript source (admin JS)
-│   └── admin.ts                            # Settings page JS (connect button, status polling)
+segmentflow-connect/
+├── segmentflow-connect.php                     # Bootstrap (constants, require plugin.php, instantiate orchestrator)
+│
+├── includes/                                    # ALWAYS loaded -- core classes
+│   ├── class-segmentflow.php                   # ORCHESTRATOR: load_dependencies() + init_classes()
+│   ├── class-segmentflow-helper.php            # Static helpers: is_woocommerce_active(), language, sanitization
+│   ├── class-segmentflow-options.php           # wp_options read/write (write key, API host, settings)
+│   ├── class-segmentflow-tracking.php          # wp_head hook: inject CDN SDK + WordPress user context (ALWAYS)
+│   ├── class-segmentflow-auth.php              # Connection flow handler (redirect to Segmentflow dashboard)
+│   ├── class-segmentflow-api.php               # HTTP client for Segmentflow API (status check, write key)
+│   └── class-segmentflow-lifecycle.php         # Activation, deactivation, uninstall, late activation detection
+│
+├── admin/                                       # ALWAYS loaded -- admin UI
+│   ├── class-segmentflow-admin.php             # Admin menu, dynamic tabs, CSS/JS enqueue
+│   ├── class-segmentflow-admin-settings.php    # WordPress Settings API registration
+│   └── partials/
+│       ├── admin-page.php                      # Settings page shell
+│       ├── admin-connection.php                # Connection tab (always shown)
+│       └── admin-woocommerce.php               # WooCommerce-specific settings (conditional)
+│
+├── integrations/                                # CONDITIONAL integration code
+│   └── woocommerce/                            # Only loaded when WooCommerce is active
+│       ├── class-segmentflow-wc-tracking.php   # Enriches SDK injection with WC context (cart, currency, customer)
+│       ├── class-segmentflow-wc-auth.php       # WC auto-auth endpoint (/wc-auth/v1/authorize) handling
+│       └── class-segmentflow-wc-helper.php     # WC-specific utilities
+│   # Future: integrations/cf7/, integrations/elementor/, etc.
+│
+├── src/                                         # TypeScript source (admin JS)
+│   └── admin.ts                                # Settings page JS (connect button, status polling)
 ├── assets/
-│   ├── css/admin.css                       # Settings page styles
-│   ├── js/                                 # Compiled JS output (gitignored, built by tsdown)
-│   │   └── admin.js                        # Compiled IIFE bundle from src/admin.ts
+│   ├── css/admin.css                           # Settings page styles
+│   ├── js/                                     # Compiled JS output (gitignored, built by tsdown)
+│   │   └── admin.js                            # Compiled IIFE bundle from src/admin.ts
 │   └── images/
-│       ├── segmentflow-icon.svg            # Plugin icon
-│       └── banner-772x250.png              # WordPress.org banner
+│       ├── segmentflow-icon.svg                # Plugin icon
+│       └── banner-772x250.png                  # WordPress.org banner
 ├── tests/
-│   ├── bootstrap.php                       # PHPUnit bootstrap (loads WP test suite)
-│   ├── test-activation.php                 # Plugin activation/deactivation tests
-│   ├── test-tracking.php                   # SDK injection output tests
-│   ├── test-auth.php                       # Auto-auth flow tests
-│   └── test-admin.php                      # Settings page tests
+│   ├── bootstrap.php                           # PHPUnit bootstrap (loads WP test suite)
+│   ├── test-activation.php                     # Plugin activation/deactivation tests
+│   ├── test-tracking.php                       # Core SDK injection tests (without WooCommerce)
+│   ├── test-tracking-woocommerce.php           # WC-specific context enrichment tests
+│   ├── test-auth.php                           # Connection flow tests
+│   ├── test-wc-auth.php                        # WC auto-auth flow tests
+│   ├── test-admin.php                          # Settings page tests
+│   └── test-helper.php                         # Integration detection tests
 ├── scripts/
-│   ├── bump-version.mjs                    # Bump version in PHP header + readme.txt (for changesets)
-│   └── create-zip.mjs                      # Create plugin .zip for distribution
+│   ├── bump-version.mjs                        # Bump version in PHP header + readme.txt (for changesets)
+│   └── create-zip.mjs                          # Create plugin .zip for distribution
 ├── languages/
-│   └── segmentflow-woocommerce.pot         # i18n template
-├── uninstall.php                           # Cleanup on plugin deletion
-├── readme.txt                              # WordPress.org description (required format)
-├── LICENSE                                 # GPL v2+
+│   └── segmentflow-connect.pot                 # i18n template
+├── uninstall.php                               # Cleanup on plugin deletion
+├── readme.txt                                  # WordPress.org description (required format)
+├── LICENSE                                     # GPL v2+
 │
 # ── TypeScript / Node tooling ──
-├── package.json                            # Node deps (tsdown, eslint, prettier, lint-staged, changesets)
-├── pnpm-lock.yaml                          # Lockfile (pnpm, matches main repo)
-├── tsconfig.json                           # TypeScript config for admin JS
-├── tsdown.config.ts                        # tsdown build config (IIFE bundle)
-├── eslint.config.mjs                       # ESLint 9 flat config (TypeScript)
-├── .prettierrc                             # Prettier config
-├── .lintstagedrc.json                      # Lint-staged config (TS + PHP)
+├── package.json                                # Node deps (tsdown, eslint, prettier, lint-staged, changesets)
+├── pnpm-lock.yaml                              # Lockfile (pnpm, matches main repo)
+├── tsconfig.json                               # TypeScript config for admin JS
+├── tsdown.config.ts                            # tsdown build config (IIFE bundle)
+├── eslint.config.mjs                           # ESLint 9 flat config (TypeScript)
+├── .prettierrc                                 # Prettier config
+├── .lintstagedrc.json                          # Lint-staged config (TS + PHP)
 │
 # ── PHP tooling ──
-├── composer.json                           # PHP deps (phpcs, phpunit, wp-coding-standards)
+├── composer.json                               # PHP deps (phpcs, phpunit, wp-coding-standards)
 ├── composer.lock
-├── phpcs.xml.dist                          # PHPCS config (WordPress coding standards)
-├── phpunit.xml.dist                        # PHPUnit config
+├── phpcs.xml.dist                              # PHPCS config (WordPress coding standards)
+├── phpunit.xml.dist                            # PHPUnit config
 │
 # ── CI/CD ──
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                          # Lint (PHP + TS) + Test (PHPUnit matrix) on PR
-│       ├── release.yml                     # Changeset version + deploy to WordPress.org SVN
-│       └── build.yml                       # Build admin JS + create plugin zip artifact
+│       ├── ci.yml                              # Lint (PHP + TS) + Test (PHPUnit matrix) on PR
+│       ├── release.yml                         # Changeset version + deploy to WordPress.org SVN
+│       └── build.yml                           # Build admin JS + create plugin zip artifact
 ├── .changeset/
-│   └── config.json                         # Changesets config
+│   └── config.json                             # Changesets config
 │
 # ── Git config ──
-├── .nvmrc                                  # Node 24 (match main repo)
+├── .nvmrc                                      # Node 24 (match main repo)
 ├── .gitignore
-├── .editorconfig                           # Tabs for PHP, spaces for TS/JS
+├── .editorconfig                               # Tabs for PHP, spaces for TS/JS
 └── .husky/
-    └── pre-commit                          # lint-staged (TS + PHP)
+    └── pre-commit                              # lint-staged (TS + PHP)
 ```
 
 **WordPress.org `readme.txt` key fields:**
-- Plugin name: Segmentflow for WooCommerce
+- Plugin name: Segmentflow Connect
+- Description: Connect your WordPress website or WooCommerce store to Segmentflow for AI-powered email marketing, customer segmentation, and revenue attribution.
 - Requires at least: WordPress 5.8
 - Tested up to: WordPress 6.7
-- Requires PHP: 8.2
-- WC requires at least: 5.0
+- Requires PHP: 7.4
+- WC requires at least: 5.0 (optional -- plugin works without WooCommerce)
 - WC tested up to: 9.x
 - License: GPL v2+
-- Tags: email marketing, segmentation, woocommerce, analytics, customer data
+- Tags: email marketing, analytics, segmentation, woocommerce, tracking
 
 ##### Repository Setup & Tooling Best Practices
 
-The `segmentflow-woocommerce` repo is a hybrid PHP + TypeScript project. The PHP code is the WordPress plugin itself; the TypeScript code is the admin JS (~200 lines) that powers the settings page UI (connect button behavior, status polling, disconnect confirmation). All tooling choices align with the main `segmentflow-ai` monorepo where applicable, adapted for standalone repo context.
+The `segmentflow-connect` repo is a hybrid PHP + TypeScript project. The PHP code is the WordPress plugin itself (core classes + conditional WooCommerce integration); the TypeScript code is the admin JS (~200 lines) that powers the settings page UI (connect button behavior, status polling, disconnect confirmation). All tooling choices align with the main `segmentflow-ai` monorepo where applicable, adapted for standalone repo context.
 
 ###### Package Management: pnpm
 
@@ -895,11 +938,11 @@ Use pnpm for consistency with the main repo. Same Node.js version (24).
 
 ```json
 {
-  "name": "segmentflow-woocommerce",
+  "name": "segmentflow-connect",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Connect your WooCommerce store to Segmentflow for AI-powered email marketing.",
+  "description": "Connect your WordPress site or WooCommerce store to Segmentflow for AI-powered email marketing.",
   "license": "GPL-2.0-or-later",
   "scripts": {
     "build": "tsdown",
@@ -1021,7 +1064,7 @@ export default defineConfig([
 
   // TypeScript files
   {
-    name: "segmentflow-woocommerce/typescript",
+    name: "segmentflow-connect/typescript",
     files: ["src/**/*.ts"],
     extends: [eslint.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: {
@@ -1088,12 +1131,12 @@ Pre-commit linting for both TypeScript and PHP files. Stricter than the main rep
 
 ```json
 {
-  "name": "segmentflow/segmentflow-woocommerce-plugin",
-  "description": "Segmentflow for WooCommerce - AI-powered email marketing integration",
+  "name": "segmentflow/segmentflow-connect",
+  "description": "Segmentflow Connect - AI-powered email marketing integration for WordPress and WooCommerce",
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "require": {
-    "php": ">=8.2"
+    "php": ">=7.4"
   },
   "require-dev": {
     "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
@@ -1121,12 +1164,14 @@ Pre-commit linting for both TypeScript and PHP files. Stricter than the main rep
 
 ```xml
 <?xml version="1.0"?>
-<ruleset name="Segmentflow WooCommerce">
-    <description>Coding standards for the Segmentflow WooCommerce plugin.</description>
+<ruleset name="Segmentflow Connect">
+    <description>Coding standards for the Segmentflow Connect plugin.</description>
 
     <!-- Scan these files -->
-    <file>segmentflow-woocommerce.php</file>
+    <file>segmentflow-connect.php</file>
     <file>includes/</file>
+    <file>admin/</file>
+    <file>integrations/</file>
     <file>uninstall.php</file>
     <file>tests/</file>
 
@@ -1143,14 +1188,14 @@ Pre-commit linting for both TypeScript and PHP files. Stricter than the main rep
     <rule ref="WordPress.WP.I18n">
         <properties>
             <property name="text_domain" type="array">
-                <element value="segmentflow-woocommerce"/>
+                <element value="segmentflow-connect"/>
             </property>
         </properties>
     </rule>
 
     <!-- PHP Compatibility -->
     <rule ref="PHPCompatibilityWP"/>
-    <config name="testVersion" value="8.2-"/>
+    <config name="testVersion" value="7.4-"/>
 
     <!-- Minimum WP version for deprecated function checks -->
     <config name="minimum_wp_version" value="5.8"/>
@@ -1170,14 +1215,14 @@ Pre-commit linting for both TypeScript and PHP files. Stricter than the main rep
     beStrictAboutTestsThatDoNotTestAnything="true"
 >
     <testsuites>
-        <testsuite name="Segmentflow WooCommerce">
+        <testsuite name="Segmentflow Connect">
             <directory suffix=".php">tests/</directory>
         </testsuite>
     </testsuites>
     <coverage>
         <include>
             <directory suffix=".php">includes/</directory>
-            <file>segmentflow-woocommerce.php</file>
+            <file>segmentflow-connect.php</file>
         </include>
     </coverage>
 </phpunit>
@@ -1220,7 +1265,7 @@ tests_add_filter( 'muplugins_loaded', function() {
  * Load the plugin.
  */
 tests_add_filter( 'muplugins_loaded', function() {
-    require dirname( __DIR__ ) . '/segmentflow-woocommerce.php';
+    require dirname( __DIR__ ) . '/segmentflow-connect.php';
 });
 
 // Start the WP test suite.
@@ -1234,7 +1279,7 @@ require $_tests_dir . '/includes/bootstrap.php';
 ```json
 {
   "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
-  "changelog": ["@changesets/changelog-github", { "repo": "segmentflow/segmentflow-woocommerce-plugin" }],
+  "changelog": ["@changesets/changelog-github", { "repo": "segmentflow/segmentflow-connect" }],
   "commit": false,
   "fixed": [],
   "linked": [],
@@ -1249,12 +1294,12 @@ require $_tests_dir . '/includes/bootstrap.php';
 
 1. Developer creates a changeset (`pnpm changeset`) describing the change
 2. On merge to `main`, the `release.yml` workflow detects pending changesets
-3. If changesets exist: opens a "Version Packages" PR that bumps version in `package.json`, `segmentflow-woocommerce.php` (plugin header `Version:` field), and `readme.txt` (`Stable tag:` field) via `scripts/bump-version.mjs`
+3. If changesets exist: opens a "Version Packages" PR that bumps version in `package.json`, `segmentflow-connect.php` (plugin header `Version:` field), and `readme.txt` (`Stable tag:` field) via `scripts/bump-version.mjs`
 4. When the "Version Packages" PR is merged: creates a GitHub Release, which triggers the WordPress.org SVN deploy
 
 **`scripts/bump-version.mjs`** -- Custom script that changesets calls (via the `"version"` script in `package.json`) to sync the version across all three locations:
 1. `package.json` -- standard changesets behavior
-2. `segmentflow-woocommerce.php` plugin header -- regex replace on `Version: X.Y.Z`
+2. `segmentflow-connect.php` plugin header -- regex replace on `Version: X.Y.Z`
 3. `readme.txt` stable tag -- regex replace on `Stable tag: X.Y.Z`
 
 ###### GitHub Actions CI/CD
@@ -1304,7 +1349,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        php-version: ["8.2", "8.3", "8.4"]
+        php-version: ["7.4", "8.1", "8.2"]
         wp-version: ["6.4", "latest"]
     steps:
       - uses: actions/checkout@v4
@@ -1386,7 +1431,7 @@ jobs:
         env:
           SVN_USERNAME: ${{ secrets.WP_ORG_SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.WP_ORG_SVN_PASSWORD }}
-          SLUG: segmentflow-woocommerce
+          SLUG: segmentflow-connect
           BUILD_DIR: "."
           ASSETS_DIR: ".wordpress-org"
 ```
@@ -1424,8 +1469,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: segmentflow-woocommerce
-          path: segmentflow-woocommerce.zip
+          name: segmentflow-connect
+          path: segmentflow-connect.zip
 ```
 
 ###### `.gitignore`
@@ -1495,7 +1540,7 @@ WordPress PHP conventions use tabs (4-wide); TypeScript/JS uses spaces (2-wide).
 | tsdown format | IIFE | WordPress `wp_enqueue_script()` loads via `<script>` tags |
 | tsdown `globalName` | `SegmentflowAdmin` | Namespaced to avoid conflicts with other WP plugins |
 | PHP linting | PHPCS + WordPress-Extra + PHPCompatibility | WordPress.org standard; reviewers expect it |
-| PHP testing | PHPUnit 9 with WP test suite | Matrix testing across PHP 8.2-8.4 and WP 6.4-latest |
+| PHP testing | PHPUnit 9 with WP test suite | Matrix testing across PHP 7.4-8.2 and WP 6.4-latest |
 | Release automation | Changesets + custom version bump script | Auto-changelog, auto-version PR, auto-deploy to WordPress.org SVN |
 | Package manager | pnpm 10.27.0 | Consistency with main repo |
 | Node.js version | 24 | Match main repo |
@@ -1507,28 +1552,129 @@ WordPress PHP conventions use tabs (4-wide); TypeScript/JS uses spaces (2-wide).
 
 ##### Plugin PHP Architecture
 
-**`segmentflow-woocommerce.php`** (main plugin file):
+**`segmentflow-connect.php`** (bootstrap file):
 
 ```php
 <?php
 /**
- * Plugin Name: Segmentflow for WooCommerce
- * Description: Connect your WooCommerce store to Segmentflow for AI-powered email marketing and customer segmentation.
+ * Plugin Name: Segmentflow Connect
+ * Description: Connect your WordPress site or WooCommerce store to Segmentflow for AI-powered email marketing, customer segmentation, and revenue attribution.
  * Version: 1.0.0
  * Requires at least: 5.8
- * Requires PHP: 8.2
+ * Requires PHP: 7.4
  * WC requires at least: 5.0
+ * WC tested up to: 9.x
  * License: GPL v2 or later
  */
 
-// Activation: check WooCommerce is active, create options
-// Deactivation: stop SDK injection only (unhook wp_head). Webhooks and API connection remain active.
-// Uninstall (uninstall.php): full cleanup -- delete wp_options, optionally disconnect from Segmentflow API
-// Register settings tab under WooCommerce > Settings (via WC_Settings_Page)
-// Register wp_head hook for tracking script injection
+defined( 'ABSPATH' ) || exit;
+
+define( 'SEGMENTFLOW_VERSION', '1.0.0' );
+define( 'SEGMENTFLOW_PATH', plugin_dir_path( __FILE__ ) );
+define( 'SEGMENTFLOW_URL', plugin_dir_url( __FILE__ ) );
+
+// Ensure is_plugin_active() is available everywhere (front-end, cron, REST)
+require_once ABSPATH . 'wp-admin/includes/plugin.php';
+
+// Load lifecycle hooks (activation, deactivation, uninstall)
+require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-lifecycle.php';
+$lifecycle = new Segmentflow_Lifecycle();
+register_activation_hook( __FILE__, array( $lifecycle, 'activate' ) );
+register_deactivation_hook( __FILE__, array( $lifecycle, 'deactivate' ) );
+register_uninstall_hook( __FILE__, array( 'Segmentflow_Lifecycle', 'uninstall' ) );
+
+// Load and instantiate the orchestrator
+require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow.php';
+new Segmentflow();
 ```
 
-**`class-segmentflow-tracking.php`** -- SDK injection (equivalent to `segmentflow-tracking.liquid`):
+**`class-segmentflow.php`** (orchestrator -- the core architectural pattern):
+
+```php
+<?php
+class Segmentflow {
+
+    public function __construct() {
+        $this->load_dependencies();
+        $this->init_classes();
+    }
+
+    private function load_dependencies() {
+        // ALWAYS: core classes
+        require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-helper.php';
+        require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-options.php';
+        require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-tracking.php';
+        require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-auth.php';
+        require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-api.php';
+        require_once SEGMENTFLOW_PATH . 'admin/class-segmentflow-admin.php';
+        require_once SEGMENTFLOW_PATH . 'admin/class-segmentflow-admin-settings.php';
+
+        // CONDITIONAL: WooCommerce integration
+        if ( Segmentflow_Helper::is_woocommerce_active() ) {
+            require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-tracking.php';
+            require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-auth.php';
+            require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-helper.php';
+        }
+
+        // FUTURE: Contact Form 7
+        // if ( Segmentflow_Helper::is_cf7_active() ) {
+        //     require_once SEGMENTFLOW_PATH . 'integrations/cf7/class-segmentflow-cf7.php';
+        // }
+
+        // FUTURE: Elementor
+        // if ( Segmentflow_Helper::is_elementor_active() ) {
+        //     require_once SEGMENTFLOW_PATH . 'integrations/elementor/class-segmentflow-elementor.php';
+        // }
+    }
+
+    private function init_classes() {
+        $options = new Segmentflow_Options();
+
+        // ALWAYS: core tracking (works on any WordPress site)
+        $tracking = new Segmentflow_Tracking( $options );
+        $tracking->register_hooks();
+
+        // ALWAYS: auth, admin
+        $auth = new Segmentflow_Auth( $options );
+        $auth->register_hooks();
+
+        $admin = new Segmentflow_Admin( $options );
+        $admin->register_hooks();
+
+        // CONDITIONAL: WooCommerce enrichment
+        if ( Segmentflow_Helper::is_woocommerce_active() ) {
+            $wc_tracking = new Segmentflow_WC_Tracking( $options, $tracking );
+            $wc_tracking->register_hooks();
+
+            if ( $options->has_credentials() ) {
+                $wc_auth = new Segmentflow_WC_Auth( $options );
+                $wc_auth->register_hooks();
+            }
+        }
+    }
+}
+```
+
+**`class-segmentflow-helper.php`** -- Integration detection (Smaily Connect pattern):
+
+```php
+<?php
+class Segmentflow_Helper {
+
+    public static function is_woocommerce_active() {
+        if ( function_exists( 'is_plugin_active' ) ) {
+            return is_plugin_active( 'woocommerce/woocommerce.php' );
+        }
+        return class_exists( 'WooCommerce' );
+    }
+
+    // Future detection methods:
+    // public static function is_cf7_active() { ... }
+    // public static function is_elementor_active() { ... }
+}
+```
+
+**`class-segmentflow-tracking.php`** -- Core SDK injection (works on ANY WordPress site):
 
 Hooks into `wp_head` and outputs:
 
@@ -1536,39 +1682,48 @@ Hooks into `wp_head` and outputs:
 <script>
 (function() {
   var config = {
-    writeKey: '<?php echo esc_js(get_option("segmentflow_write_key")); ?>',
-    host: '<?php echo esc_js(get_option("segmentflow_api_host", "https://api.segmentflow.ai")); ?>',
-    debug: <?php echo get_option("segmentflow_debug_mode", false) ? "true" : "false"; ?>,
-    consentRequired: <?php echo get_option("segmentflow_consent_required", false) ? "true" : "false"; ?>
+    writeKey: '<?php echo esc_js( $this->options->get( "write_key" ) ); ?>',
+    host: '<?php echo esc_js( $this->options->get( "api_host", "https://api.segmentflow.ai" ) ); ?>',
+    debug: <?php echo $this->options->get( "debug_mode", false ) ? "true" : "false"; ?>,
+    consentRequired: <?php echo $this->options->get( "consent_required", false ) ? "true" : "false"; ?>
   };
 
-  var wcContext = {
-    storeUrl: '<?php echo esc_js(home_url()); ?>',
-    customerId: <?php echo is_user_logged_in() ? json_encode(get_current_user_id()) : 'null'; ?>,
-    customerEmail: <?php echo is_user_logged_in() ? json_encode(wp_get_current_user()->user_email) : 'null'; ?>,
-    cartHash: <?php echo WC()->cart ? json_encode(WC()->cart->get_cart_hash()) : 'null'; ?>,
-    currency: '<?php echo esc_js(get_woocommerce_currency()); ?>'
+  // WordPress user context (available on ANY WordPress site)
+  var wpContext = {
+    siteUrl: '<?php echo esc_js( home_url() ); ?>',
+    userId: <?php echo is_user_logged_in() ? json_encode( get_current_user_id() ) : 'null'; ?>,
+    userEmail: <?php echo is_user_logged_in() ? json_encode( wp_get_current_user()->user_email ) : 'null'; ?>,
+    locale: '<?php echo esc_js( get_locale() ); ?>'
   };
+
+  <?php
+  // Allow integrations to add context (WooCommerce adds cart hash, currency, etc.)
+  $extra_context = apply_filters( 'segmentflow_tracking_context', array() );
+  if ( ! empty( $extra_context ) ) :
+  ?>
+  var integrationContext = <?php echo wp_json_encode( $extra_context ); ?>;
+  <?php endif; ?>
 
   var script = document.createElement('script');
-  script.src = config.host.replace('api.', 'cdn.') + '/sdk.js';
+  script.src = 'https://cdn.segmentflow.ai/sdk.js';
   script.async = true;
   script.onload = function() {
     window.segmentflow.init(config);
 
-    if (wcContext.customerId) {
-      window.segmentflow.identify('wc_' + wcContext.customerId, {
-        email: wcContext.customerEmail,
-        woocommerce_customer_id: wcContext.customerId
-      });
+    // Determine user ID prefix based on active integrations
+    var prefix = (typeof integrationContext !== 'undefined' && integrationContext.platform === 'woocommerce') ? 'wc_' : 'wp_';
+
+    if (wpContext.userId) {
+      var traits = { email: wpContext.userEmail };
+      if (typeof integrationContext !== 'undefined') {
+        Object.assign(traits, integrationContext.traits || {});
+      }
+      window.segmentflow.identify(prefix + wpContext.userId, traits);
     }
 
-    if (wcContext.cartHash) {
-      window.segmentflow.setContext({
-        cart_hash: wcContext.cartHash,
-        store_url: wcContext.storeUrl,
-        currency: wcContext.currency
-      });
+    // Set context from integration enrichment
+    if (typeof integrationContext !== 'undefined' && integrationContext.context) {
+      window.segmentflow.setContext(integrationContext.context);
     }
   };
   document.head.appendChild(script);
@@ -1576,46 +1731,106 @@ Hooks into `wp_head` and outputs:
 </script>
 ```
 
-Key differences from Shopify Liquid:
-- Write key comes from `wp_options` table (set during auto-auth), not Shopify App Metafields
-- Customer identity from WordPress user session (`get_current_user_id()`), not Shopify `{{ customer.id }}`
-- Cart hash from `WC()->cart->get_cart_hash()`, not `{{ cart.token }}`
-- User ID prefix is `wc_` instead of `shopify_`
+**`integrations/woocommerce/class-segmentflow-wc-tracking.php`** -- WooCommerce context enrichment:
 
-**`class-segmentflow-admin.php`** -- Settings page:
+```php
+<?php
+class Segmentflow_WC_Tracking {
 
-Registers a settings tab under **WooCommerce > Settings > Segmentflow** using the WooCommerce Settings API (`WC_Settings_Page`). Shows:
-- **Not connected**: "Connect to Segmentflow" button that initiates the auto-auth flow
-- **Connected**: Organization name, sync status, write key (masked), "Disconnect" button
-- **Settings**: Debug mode toggle, consent required toggle, API host override
+    public function register_hooks() {
+        add_filter( 'segmentflow_tracking_context', array( $this, 'add_woocommerce_context' ) );
+    }
 
-**`class-segmentflow-auth.php`** -- Auto-auth flow:
+    public function add_woocommerce_context( $context ) {
+        $context['platform'] = 'woocommerce';
+        $context['traits'] = array(
+            'woocommerce_customer_id' => get_current_user_id(),
+        );
+        $context['context'] = array(
+            'store_url' => home_url(),
+            'currency'  => get_woocommerce_currency(),
+            'cart_hash' => WC()->cart ? WC()->cart->get_cart_hash() : null,
+        );
+        return $context;
+    }
+}
+```
 
-Two entry points for the connection:
+Key architectural decisions:
+- Core tracking uses `wp_` prefix for user IDs; WooCommerce enrichment changes it to `wc_`
+- WooCommerce context is injected via `segmentflow_tracking_context` filter -- clean separation
+- On a plain WordPress site, you get: page views, identify for logged-in users, referrer tracking
+- On a WooCommerce site, you additionally get: cart hash, currency, WC customer ID in context
 
-**Entry Point A: From WordPress Admin (Plugin Settings)**
+**`admin/class-segmentflow-admin.php`** -- Settings page with dynamic tabs:
+
+Registers a top-level "Segmentflow" menu item in WP admin. Tabs adapt based on active integrations:
+
+| Tab | Shown When | Content |
+|---|---|---|
+| **Connection** | Always | Connect/disconnect to Segmentflow, write key status |
+| **Settings** | Always, if connected | Debug mode, consent required, API host override |
+| **WooCommerce** | WooCommerce active AND connected | WC-specific settings, auto-auth status, store info |
+
+Without WooCommerce, the plugin still has a functional settings page -- just fewer tabs.
+
+**`class-segmentflow-auth.php`** -- Connection flow:
+
+Three connection scenarios:
+
+**Scenario 1: Plain WordPress site (no WooCommerce)**
 1. User clicks "Connect to Segmentflow" in plugin settings
-2. Plugin redirects to Segmentflow dashboard login: `https://app.segmentflow.ai/integrations/woocommerce/connect?store_url={store_url}&return_url={wp_admin_url}`
-3. User logs in / selects organization in Segmentflow dashboard
-4. API creates a `PendingConnection` record with a cryptographically random nonce and short TTL
-5. Segmentflow redirects to: `{store_url}/wc-auth/v1/authorize?app_name=Segmentflow&scope=read_write&user_id={nonce}&return_url={wp_admin_url}&callback_url={api_callback_url}`
-6. User sees WooCommerce consent screen, clicks "Approve"
-7. WooCommerce POSTs `{ user_id (nonce), consumer_key, consumer_secret }` to Segmentflow API callback
-8. API verifies nonce against `PendingConnection`, resolves to organization, stores encrypted credentials, creates write key, registers webhooks, triggers sync
-9. User is redirected back to WP admin with success parameter and a temporary poll token
-10. Plugin polls `GET /integrations/woocommerce/status` with the temporary token to retrieve the write key
-11. Plugin stores write key in `wp_options`, begins injecting SDK
+2. Plugin redirects to Segmentflow dashboard: `https://app.segmentflow.ai/connect/wordpress?site_url={site_url}&return_url={wp_admin_url}`
+3. User logs in / selects organization
+4. Dashboard generates a write key and redirects back with it as a query parameter
+5. Plugin stores write key in `wp_options`
+6. SDK injection begins immediately (page views + identify for logged-in users)
+7. No WC auto-auth needed -- no webhooks, no REST sync, just client-side tracking
 
-**Entry Point B: From Segmentflow Dashboard**
+**Scenario 2: WordPress + WooCommerce (from plugin settings)**
+1. User clicks "Connect to Segmentflow" in plugin settings
+2. Plugin detects WooCommerce is active
+3. Plugin redirects to Segmentflow dashboard: `https://app.segmentflow.ai/connect/woocommerce?store_url={store_url}&return_url={wp_admin_url}`
+4. User logs in / selects organization in Segmentflow dashboard
+5. Segmentflow API generates the auto-auth URL and redirects to: `{store_url}/wc-auth/v1/authorize?app_name=Segmentflow&scope=read_write&user_id={orgId}&return_url={wp_admin_url}&callback_url={api_callback_url}`
+6. User sees WooCommerce consent screen, clicks "Approve"
+7. WooCommerce POSTs consumer key + secret to Segmentflow API callback
+8. API stores credentials, creates write key, registers webhooks, triggers sync
+9. User is redirected back to WP admin with success parameter
+10. Plugin stores write key in `wp_options`, begins injecting SDK with WC context
+
+**Scenario 3: From Segmentflow Dashboard (WooCommerce)**
 1. User clicks "Connect WooCommerce" in dashboard, enters store URL
-2. API creates a `PendingConnection` record with a cryptographically random nonce and short TTL
-3. Dashboard redirects to: `{store_url}/wc-auth/v1/authorize?app_name=Segmentflow&scope=read_write&user_id={nonce}&return_url={dashboard_url}&callback_url={api_callback_url}`
-4. User sees WooCommerce consent screen, clicks "Approve"
-5. WooCommerce POSTs `{ user_id (nonce), consumer_key, consumer_secret }` to Segmentflow API callback
-6. API verifies nonce against `PendingConnection`, resolves to organization, stores encrypted credentials, creates write key, registers webhooks, triggers sync
-7. User is redirected back to Segmentflow dashboard
-8. Dashboard polls for connection status and shows connected state
-9. **Note**: Storefront tracking won't work until the plugin is installed. Dashboard shows a prompt: "Install the Segmentflow for WooCommerce plugin to enable storefront tracking" with a link to WordPress.org
+2. Dashboard redirects to: `{store_url}/wc-auth/v1/authorize?app_name=Segmentflow&scope=read_write&user_id={orgId}&return_url={dashboard_url}&callback_url={api_callback_url}`
+3. User sees WooCommerce consent screen, clicks "Approve"
+4. WooCommerce POSTs consumer key + secret to Segmentflow API callback
+5. API stores credentials, creates write key, registers webhooks, triggers sync
+6. User is redirected back to Segmentflow dashboard
+7. Dashboard shows connected status
+8. **Note**: Storefront tracking won't work until the plugin is installed. Dashboard shows: "Install Segmentflow Connect to enable storefront tracking" with a link to WordPress.org
+
+**`class-segmentflow-lifecycle.php`** -- Late activation handling:
+
+```php
+<?php
+class Segmentflow_Lifecycle {
+
+    public function activate() {
+        // Create wp_options defaults
+        // If WooCommerce is active: set up WC-specific options
+    }
+
+    // Handle WooCommerce activated AFTER Segmentflow Connect
+    public function check_for_dependency( $plugin, $network ) {
+        if ( $plugin === 'woocommerce/woocommerce.php' ) {
+            // WooCommerce was just activated -- initialize WC features
+            // If already connected, offer to upgrade connection with WC auto-auth
+        }
+    }
+}
+```
+
+This ensures install order doesn't matter -- WooCommerce can be installed before or after the plugin.
 
 ##### SDK WooCommerce Plugin (`woocommerce.plugin.ts`)
 
@@ -1656,9 +1871,6 @@ WooCommerce detection signals (check `window` globals):
 - `woocommerce_params` -- general WC JavaScript params
 - `wp` object with `woocommerce` properties
 
-**Checkout page detection** (for `checkout_started` event):
-The plugin also detects the WooCommerce checkout page and automatically fires a `checkout_started` event. Detection uses the `is_checkout` body class (WordPress adds `woocommerce-checkout` to `<body>`) or the presence of `wc_checkout_params` in the window globals. This event powers the "Abandoned Cart" segment template. Because WooCommerce has no `checkout.started` webhook topic, this client-side approach is the only way to capture checkout initiation -- it requires the WordPress plugin to be installed for SDK injection.
-
 **Update to `cdn-entry.ts`**: Auto-register the WooCommerce plugin alongside the existing ones:
 
 ```typescript
@@ -1695,27 +1907,31 @@ This should largely work without WooCommerce-specific code.
 
 | # | Task | Estimated Time | Dependencies |
 |---|---|---|---|
-| 0 | **`segmentflow-woocommerce` repo setup**: package.json, pnpm, tsconfig, tsdown, eslint, prettier, husky, lint-staged, composer, phpcs, phpunit, changesets, GitHub Actions CI/CD, .gitignore, .editorconfig, .nvmrc | 1.5 days | None |
-| 1 | Prisma schema: `WooCommerceIntegration` model + enum update + migration | 0.5 day | None |
-| 2 | Config schema for WooCommerce env vars | 0.5 day | None |
-| 3 | WooCommerce API client wrapper (REST calls with auth, pagination, error handling) | 1 day | None |
-| 4 | `WooCommerceIntegrationService` (connect, validate, register webhooks, disconnect) | 2 days | #1, #2, #3 |
-| 5 | `WooCommerceIntegrationService` historical sync (customers, orders, products) | 1.5 days | #4 |
-| 6 | `WooCommerceWebhookService` (HMAC verify, dedup, route by topic, emit events) | 1.5 days | #1 |
-| 7 | API routes + Zod schemas (connect, authorize, callback, status, sync, disconnect, webhook receiver) | 1 day | #4, #6 |
-| 8 | Repository: `woocommerce-integration.repository.ts` | 0.5 day | #1 |
-| 9 | Segment templates (`WOOCOMMERCE_SEGMENT_TEMPLATES`) | 0.5 day | None |
-| 10 | User property templates (`WOOCOMMERCE_USER_PROPERTY_TEMPLATES`) | 0.5 day | None |
-| 11 | Integration framework updates (utils, seeders, bootstrapper) | 0.5 day | #9, #10 |
-| 12 | SDK: `woocommerce.plugin.ts` + register in `cdn-entry.ts` | 1 day | None |
-| 13 | WordPress plugin: PHP core classes (tracking, admin, API client) | 1.5 days | #0, #4 (needs API callback endpoints) |
-| 14 | WordPress plugin: TypeScript admin JS (`src/admin.ts` + tsdown build) | 0.5 day | #0, #13 |
-| 15 | WordPress plugin: Auto-auth flow (both entry points: WP admin + dashboard) | 1 day | #13 |
-| 16 | Dashboard: `WooCommerceConnectCard` component (with plugin status detection) | 1.5 days | #7 |
-| 17 | Dashboard: Update integrations page, IntegrationBadge, onboarding step | 0.5 day | #16 |
-| 18 | WordPress.org submission prep (readme.txt, screenshots, plugin assets) | 0.5 day | #13, #14, #15 |
-| 19 | Testing + edge cases (API, webhooks, plugin, PHPUnit, both connection flows) | 2 days | All above |
-| **Total** | | **~17.5 days** | |
+| 0 | **`segmentflow-connect` repo setup**: package.json, pnpm, tsconfig, tsdown, eslint, prettier, husky, lint-staged, composer, phpcs, phpunit, changesets, GitHub Actions CI/CD, .gitignore, .editorconfig, .nvmrc | 1.5 days | None |
+| 1 | WordPress plugin: Orchestrator pattern (`class-segmentflow.php`, `class-segmentflow-helper.php`, `class-segmentflow-options.php`, `class-segmentflow-lifecycle.php`) | 1 day | #0 |
+| 2 | WordPress plugin: Core tracking (`class-segmentflow-tracking.php`) -- SDK injection for ANY WordPress site (page views, identify logged-in users, `segmentflow_tracking_context` filter) | 0.5 day | #1 |
+| 3 | WordPress plugin: Core connection flow (`class-segmentflow-auth.php`) -- plain WordPress site connect (write key only, no WC auto-auth) | 0.5 day | #1 |
+| 4 | WordPress plugin: Admin UI (`class-segmentflow-admin.php`, `class-segmentflow-admin-settings.php`, partials) -- dynamic tabs, settings page | 0.5 day | #1, #2, #3 |
+| 5 | WordPress plugin: WC integration (`integrations/woocommerce/class-segmentflow-wc-tracking.php`) -- cart hash, currency, WC customer ID enrichment via filter | 0.5 day | #2 |
+| 6 | WordPress plugin: WC auto-auth (`integrations/woocommerce/class-segmentflow-wc-auth.php`) -- both entry points | 1 day | #4, #5 |
+| 7 | WordPress plugin: TypeScript admin JS (`src/admin.ts` + tsdown build) | 0.5 day | #0, #4 |
+| 8 | Prisma schema: `WooCommerceIntegration` model + enum update + migration | 0.5 day | None |
+| 9 | Config schema for WooCommerce env vars | 0.5 day | None |
+| 10 | WooCommerce API client wrapper (REST calls with auth, pagination, error handling) | 1 day | None |
+| 11 | `WooCommerceIntegrationService` (connect, validate, register webhooks, disconnect) | 2 days | #8, #9, #10 |
+| 12 | `WooCommerceIntegrationService` historical sync (customers, orders, products) | 1.5 days | #11 |
+| 13 | `WooCommerceWebhookService` (HMAC verify, dedup, route by topic, emit events) | 1.5 days | #8 |
+| 14 | API routes + Zod schemas (connect, authorize, callback, wordpress/connect, status, sync, disconnect, webhook receiver) | 1 day | #11, #13 |
+| 15 | Repository: `woocommerce-integration.repository.ts` | 0.5 day | #8 |
+| 16 | Segment templates (`WOOCOMMERCE_SEGMENT_TEMPLATES`) | 0.5 day | None |
+| 17 | User property templates (`WOOCOMMERCE_USER_PROPERTY_TEMPLATES`) | 0.5 day | None |
+| 18 | Integration framework updates (utils, seeders, bootstrapper) | 0.5 day | #16, #17 |
+| 19 | SDK: `woocommerce.plugin.ts` + register in `cdn-entry.ts` | 1 day | None |
+| 20 | Dashboard: `WooCommerceConnectCard` + `WordPressConnectCard` (with plugin status detection) | 1.5 days | #14 |
+| 21 | Dashboard: Update integrations page, IntegrationBadge, onboarding step | 0.5 day | #20 |
+| 22 | WordPress.org submission prep (readme.txt, screenshots, plugin assets) | 0.5 day | #1-#7 |
+| 23 | Testing + edge cases (API, webhooks, plugin with/without WC, PHPUnit, all connection flows) | 2 days | All above |
+| **Total** | | **~18.5 days** | |
 
 ### New Files
 
@@ -1738,29 +1954,45 @@ This should largely work without WooCommerce-specific code.
 | `services/web/dashboard/src/features/integrations/components/WooCommerceConnectCard.tsx` | Dashboard card (with plugin status detection) |
 | `services/web/dashboard/src/features/integrations/hooks/useWooCommerce.ts` | Dashboard hook |
 | `services/web/dashboard/src/features/integrations/hooks/useWooCommerceApi.ts` | API client hook |
+| `services/node/api/src/routes/v1/integrations/wordpress.ts` | WordPress connect route (write key generation for plain WP sites, no WC auto-auth) |
+| `services/web/dashboard/src/features/integrations/components/WordPressConnectCard.tsx` | Dashboard card for plain WordPress sites (without WooCommerce) |
 
-#### In `segmentflow-woocommerce` (new public repo)
+#### In `segmentflow-connect` (new public repo)
 
 | File | Purpose |
 |---|---|
-| `segmentflow-woocommerce.php` | Main plugin file (plugin header, activation/deactivation hooks) |
-| `includes/class-segmentflow-admin.php` | Admin settings page (Connect/Disconnect, status display) |
-| `includes/class-segmentflow-tracking.php` | `wp_head` hook: inject CDN SDK script + WooCommerce context |
-| `includes/class-segmentflow-auth.php` | Auto-auth flow handler (initiate + receive callback) |
+| `segmentflow-connect.php` | Bootstrap file (constants, require plugin.php, instantiate orchestrator) |
+| `includes/class-segmentflow.php` | Orchestrator: `load_dependencies()` + `init_classes()` with conditional integration loading |
+| `includes/class-segmentflow-helper.php` | Static helpers: `is_woocommerce_active()`, language detection, sanitization |
+| `includes/class-segmentflow-options.php` | `wp_options` read/write (write key, API host, settings) |
+| `includes/class-segmentflow-tracking.php` | Core `wp_head` hook: inject CDN SDK + WordPress user context (ALWAYS active) |
+| `includes/class-segmentflow-auth.php` | Connection flow handler (plain WP + WC auto-auth scenarios) |
 | `includes/class-segmentflow-api.php` | HTTP client for Segmentflow API (status check, write key fetch) |
+| `includes/class-segmentflow-lifecycle.php` | Activation, deactivation, uninstall, late activation detection |
+| `admin/class-segmentflow-admin.php` | Admin menu, dynamic tabs based on active integrations, CSS/JS enqueue |
+| `admin/class-segmentflow-admin-settings.php` | WordPress Settings API registration |
+| `admin/partials/admin-page.php` | Settings page shell template |
+| `admin/partials/admin-connection.php` | Connection tab template (always shown) |
+| `admin/partials/admin-woocommerce.php` | WooCommerce-specific settings tab (conditional) |
+| `integrations/woocommerce/class-segmentflow-wc-tracking.php` | WC context enrichment via `segmentflow_tracking_context` filter (cart, currency, customer) |
+| `integrations/woocommerce/class-segmentflow-wc-auth.php` | WC auto-auth endpoint handling (`/wc-auth/v1/authorize`) |
+| `integrations/woocommerce/class-segmentflow-wc-helper.php` | WC-specific utility functions |
 | `src/admin.ts` | TypeScript source for admin page JS (connect button, status polling, disconnect) |
 | `assets/css/admin.css` | Settings page styles |
 | `assets/js/admin.js` | Compiled IIFE bundle from `src/admin.ts` (gitignored, built by tsdown) |
 | `assets/images/segmentflow-icon.svg` | Plugin icon |
-| `tests/bootstrap.php` | PHPUnit bootstrap (loads WP test suite + WooCommerce + plugin) |
+| `tests/bootstrap.php` | PHPUnit bootstrap (loads WP test suite + optionally WooCommerce + plugin) |
 | `tests/test-activation.php` | Plugin activation/deactivation tests |
-| `tests/test-tracking.php` | SDK injection output tests |
-| `tests/test-auth.php` | Auto-auth flow tests |
-| `tests/test-admin.php` | Settings page tests |
+| `tests/test-tracking.php` | Core SDK injection tests (without WooCommerce) |
+| `tests/test-tracking-woocommerce.php` | WC-specific context enrichment tests |
+| `tests/test-auth.php` | Connection flow tests (plain WP) |
+| `tests/test-wc-auth.php` | WC auto-auth flow tests |
+| `tests/test-admin.php` | Settings page tests (with and without WC tabs) |
+| `tests/test-helper.php` | Integration detection tests (`is_woocommerce_active()`, etc.) |
 | `scripts/bump-version.mjs` | Sync version across package.json, PHP plugin header, and readme.txt |
 | `scripts/create-zip.mjs` | Create distributable plugin .zip (excludes dev files) |
 | `uninstall.php` | Cleanup on plugin deletion (remove `wp_options`) |
-| `readme.txt` | WordPress.org plugin description (required format) |
+| `readme.txt` | WordPress.org plugin description (covers WordPress + WooCommerce) |
 | `LICENSE` | GPL v2+ |
 | `package.json` | Node dependencies + scripts (tsdown, eslint, prettier, lint-staged, changesets) |
 | `tsconfig.json` | TypeScript config (ES2020 target, browser libs, IIFE output) |
@@ -1770,10 +2002,10 @@ This should largely work without WooCommerce-specific code.
 | `.lintstagedrc.json` | Lint-staged config (TS lint+format, PHP phpcbf) |
 | `.husky/pre-commit` | Pre-commit hook running lint-staged |
 | `composer.json` | PHP deps (phpcs, phpunit, wp-coding-standards, phpcompatibility) |
-| `phpcs.xml.dist` | PHPCS config (WordPress-Extra + PHPCompatibility, PHP 8.2+, WP 5.8+) |
-| `phpunit.xml.dist` | PHPUnit config (tests/ directory, coverage for includes/) |
+| `phpcs.xml.dist` | PHPCS config (WordPress-Extra + PHPCompatibility, PHP 7.4+, WP 5.8+) |
+| `phpunit.xml.dist` | PHPUnit config (tests/ directory, coverage for includes/ + integrations/) |
 | `.changeset/config.json` | Changesets config (GitHub changelog, `main` base branch) |
-| `.github/workflows/ci.yml` | PR checks: lint TS + lint PHP + test PHP (matrix: PHP 8.2/8.3/8.4 x WP 6.4/latest) |
+| `.github/workflows/ci.yml` | PR checks: lint TS + lint PHP + test PHP (matrix: PHP 7.4/8.1/8.2 x WP 6.4/latest) |
 | `.github/workflows/release.yml` | Changeset version PR + WordPress.org SVN deploy on merge |
 | `.github/workflows/build.yml` | Manual workflow: build admin JS + create plugin zip artifact |
 | `.nvmrc` | Node.js version (24, matches main repo) |
@@ -1822,14 +2054,15 @@ Estimated effort: **5-7 working days** (reduced from Phase 1 because patterns ar
 
 ## Phase 3: Integration Platform Expansion (Future)
 
-### WordPress Plugin (for non-WooCommerce WordPress sites)
-- The `segmentflow-woocommerce` plugin from Phase 1 requires WooCommerce. For plain WordPress sites (blogs, content sites), a separate lightweight plugin would handle:
-  - Subscriber sync via Segmentflow API (newsletter signups, contact forms)
-  - Form integration (Contact Form 7, Gravity Forms, WPForms)
-  - Visitor tracking via the same CDN SDK
-- Could potentially extend the `segmentflow-woocommerce` plugin to work without WooCommerce, or create a separate `segmentflow-wordpress` plugin
-- Estimated effort: 3-5 days
-- WordPress plugin directory approval: ~1-2 weeks
+### WordPress Form Integrations (within `segmentflow-connect`)
+- The unified `segmentflow-connect` plugin already works on plain WordPress sites (Phase 1). Phase 3 adds deeper form integrations as new modules in the `integrations/` directory:
+  - **Contact Form 7**: `integrations/cf7/` -- hook into `wpcf7_submit`, forward submissions to Segmentflow `identify()` call. Per-form configuration in CF7 editor.
+  - **Elementor**: `integrations/elementor/` -- Elementor widget for newsletter sign-up form that submits to Segmentflow.
+  - **WPForms / Gravity Forms**: Similar pattern -- detect plugin, hook into submission, forward to Segmentflow.
+- Each integration follows the same pattern: `Segmentflow_Helper::is_{integration}_active()` detection, conditional file loading in the orchestrator, `register_hooks()` contract.
+- No separate plugin needed -- all modules live in the same `segmentflow-connect` repo.
+- Estimated effort per form integration: 1-3 days each
+- No additional WordPress.org approval needed -- it's the same plugin with new features
 
 ### Zapier / Make Integration
 - Force multiplier: one integration gives connections to 5000+ apps
@@ -1858,26 +2091,40 @@ Estimated effort: **5-7 working days** (reduced from Phase 1 because patterns ar
 | WordPress.org plugin review takes longer than expected | Delays plugin distribution | Offer direct `.zip` download from Segmentflow website as interim. Submit to WordPress.org early in the implementation cycle. |
 | Plugin conflicts with other WP plugins (caching, security, optimization) | SDK script blocked or broken on storefront | Test with popular plugins (WP Super Cache, Wordfence, Yoast, WP Rocket). Add compatibility notes to readme.txt. |
 | Merchant connects from dashboard without installing plugin | No storefront tracking (webhooks + REST sync still work) | Show clear warning banner in dashboard. Webhooks and historical sync work independently of the plugin. |
-| WooCommerce auto-auth endpoint disabled by security plugin | Auto-auth connection flow fails | Detect and show specific error. Offer manual API key entry as fallback. Nonce in `PendingConnection` will expire after TTL with no side effects. |
+| WooCommerce auto-auth endpoint disabled by security plugin | Connection flow fails | Detect and show specific error. Offer manual API key entry as fallback. |
+| WooCommerce installed/uninstalled after plugin activation | Integration features may not activate/deactivate correctly | Late activation detection via `activated_plugin` hook (like Smaily Connect). Create WC-specific options and register hooks dynamically when WC is activated after the plugin. |
+| Unified plugin rejected by WordPress.org due to WooCommerce dependency confusion | Plugin listing may be unclear about WooCommerce being optional | Clearly document in readme.txt that WooCommerce is optional. Use "WC requires at least" header (WordPress.org understands this as optional). Test the plugin passes review without WooCommerce installed. |
 
 ---
 
 ## Testing Strategy
 
-### Unit Tests
+### Unit Tests (main repo)
 - WooCommerce API client: mock HTTP responses, test pagination, error handling
 - Webhook HMAC verification: test with known signature/secret pairs
 - Customer/Order mapping: test trait extraction from WC JSON payloads
 - Credential encryption/decryption round-trip
 
-### Integration Tests
-- Full connect flow: submit credentials -> validate -> register webhooks -> bootstrap
+### PHPUnit Tests (`segmentflow-connect` repo)
+- **Core tracking (without WooCommerce)**: verify SDK script output contains write key, API host, WordPress user context; verify no WC-specific context is present when WC is absent
+- **Core tracking (with WooCommerce)**: verify SDK script includes WC enrichment (cart hash, currency, WC customer ID); verify `segmentflow_tracking_context` filter adds WC context
+- **Integration detection**: verify `is_woocommerce_active()` returns correct value with/without WooCommerce loaded
+- **Orchestrator**: verify conditional file loading -- WC classes are NOT instantiated when WC is absent
+- **Late activation**: verify `activated_plugin` hook triggers WC feature initialization
+- **Activation/deactivation**: verify options are created/cleaned up correctly
+- **Admin UI**: verify WooCommerce tab only appears when WC is active AND credentials are configured
+
+### Integration Tests (main repo)
+- Full connect flow (WooCommerce): submit credentials -> validate -> register webhooks -> bootstrap
+- Full connect flow (plain WordPress): generate write key -> store in response -> verify tracking works
 - Webhook processing: simulate WC webhook payloads -> verify UserEvent creation
 - Historical sync: mock paginated API responses -> verify all profiles/events created
 - Disconnect: verify webhook cleanup and record deletion
 
 ### E2E Tests (manual)
-- Connect a real WooCommerce store (use WooCommerce's free hosted trial or local WP + WC install)
+- **Plain WordPress site**: install plugin, connect, verify page views appear in Segmentflow dashboard
+- **WooCommerce store**: install plugin, connect via auto-auth, verify full integration (webhooks, sync, storefront tracking with WC context)
+- **WooCommerce activated after plugin**: install plugin on plain WP site, connect, then install WooCommerce -- verify WC features activate and offer to upgrade connection
 - Place test orders -> verify webhook delivery -> verify profile updates
 - Verify segment computation picks up WC events
 - Verify dashboard shows correct status and store metadata
@@ -1887,12 +2134,15 @@ Estimated effort: **5-7 working days** (reduced from Phase 1 because patterns ar
 ## Success Criteria
 
 1. A WooCommerce store owner can connect their store in < 2 minutes via the dashboard or the WordPress plugin
-2. Historical customer and order data syncs within 5 minutes for stores with < 10,000 orders
-3. Real-time webhooks process within 5 seconds of store events
-4. Pre-built segments (Repeat Customers, etc.) compute correctly from WC data
-5. Revenue attribution works: campaigns -> WC orders -> attributed revenue
-6. Brand kit can extract logo and product images from WC stores
-7. The integration can be disconnected cleanly, removing all webhooks and credentials
-8. The WordPress plugin can be installed from WordPress.org and connects in < 3 clicks
-9. Storefront tracking (page views, identity stitching) works within 30 seconds of plugin activation and connection
-10. Both connection entry points (WordPress admin and Segmentflow dashboard) complete successfully
+2. A plain WordPress site owner (no WooCommerce) can install the plugin and get page view tracking in < 2 minutes
+3. Historical customer and order data syncs within 5 minutes for stores with < 10,000 orders
+4. Real-time webhooks process within 5 seconds of store events
+5. Pre-built segments (Repeat Customers, etc.) compute correctly from WC data
+6. Revenue attribution works: campaigns -> WC orders -> attributed revenue
+7. Brand kit can extract logo and product images from WC stores
+8. The integration can be disconnected cleanly, removing all webhooks and credentials
+9. The plugin can be installed from WordPress.org and connects in < 3 clicks
+10. Storefront tracking (page views, identity stitching) works within 30 seconds of plugin activation and connection
+11. All three connection scenarios work: plain WordPress from plugin, WooCommerce from plugin, WooCommerce from dashboard
+12. WooCommerce features activate/deactivate correctly when WooCommerce is installed/uninstalled after the plugin
+13. The plugin works on WordPress sites without WooCommerce -- no errors, no missing functions, no WC-specific output in the SDK script
