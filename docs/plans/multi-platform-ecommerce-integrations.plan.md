@@ -12,7 +12,7 @@
 | 2026-02-21 | Initial plan created. WooCommerce as first integration, BigCommerce as follow-up. |
 | 2026-02-21 | Updated WooCommerce approach: WordPress plugin (`segmentflow-woocommerce`) in separate public repo, CDN-loaded SDK, dual-direction auto-auth connection flow, WooCommerce SDK plugin. |
 | 2026-02-21 | Added comprehensive repo setup for `segmentflow-woocommerce`: TypeScript (tsdown IIFE build), ESLint 9, Prettier, PHPCS + WordPress Coding Standards, PHPUnit with WP test suite, Changesets for automated releases, GitHub Actions CI/CD (lint + test matrix + WordPress.org SVN deploy), Husky + lint-staged. |
-| 2026-02-21 | Resolved open questions: Minimum PHP 8.2 (test matrix 8.2/8.3/8.4). Auto-auth callback secured via nonce + PendingConnection record; plugin polls for write key. `checkout_started` event generated client-side via SDK WooCommercePlugin. Settings page under WooCommerce > Settings tab. Deactivation stops SDK only; full cleanup on uninstall. Plugin repo is `segmentflow-woo-commerce`. WordPress.org credentials not yet available. |
+| 2026-02-21 | Resolved open questions: Minimum PHP 8.2 (test matrix 8.2/8.3/8.4). Auto-auth callback secured via nonce + PendingConnection record; plugin polls for write key. `checkout_started` event generated client-side via SDK WooCommercePlugin. Settings page under WooCommerce > Settings tab. Deactivation stops SDK only; full cleanup on uninstall. Plugin repo is `segmentflow-woocommerce-plugin`. WordPress.org credentials not yet available. |
 
 ---
 
@@ -1088,7 +1088,7 @@ Pre-commit linting for both TypeScript and PHP files. Stricter than the main rep
 
 ```json
 {
-  "name": "segmentflow/segmentflow-woocommerce",
+  "name": "segmentflow/segmentflow-woocommerce-plugin",
   "description": "Segmentflow for WooCommerce - AI-powered email marketing integration",
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
@@ -1234,7 +1234,7 @@ require $_tests_dir . '/includes/bootstrap.php';
 ```json
 {
   "$schema": "https://unpkg.com/@changesets/config@3.1.1/schema.json",
-  "changelog": ["@changesets/changelog-github", { "repo": "segmentflow/segmentflow-woocommerce" }],
+  "changelog": ["@changesets/changelog-github", { "repo": "segmentflow/segmentflow-woocommerce-plugin" }],
   "commit": false,
   "fixed": [],
   "linked": [],

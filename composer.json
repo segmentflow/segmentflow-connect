@@ -1,5 +1,5 @@
 {
-  "name": "segmentflow/segmentflow-woocommerce",
+  "name": "segmentflow/segmentflow-woocommerce-plugin",
   "description": "Segmentflow for WooCommerce - AI-powered email marketing integration",
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
