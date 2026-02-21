@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "woocommerce": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "57791661b26b6e292cd4484dcc918bff3b4dd9d0358dfdf93c96c8f4b4f6d6e7"
+    },
+    "woocommerce-code-review": {
+      "source": "woocommerce/woocommerce",
+      "sourceType": "github",
+      "computedHash": "0d05db84a0a493f7ab6c16bd10ea036bfa75a978c388ae07ecc7711803bbd409"
+    }
+  }
+}
