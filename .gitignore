@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build output (admin.js is compiled from src/admin.ts)
+assets/js/*.js
+assets/js/*.js.map
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+
+# Composer
+composer.phar
+
+# WordPress test suite
+/tmp/
+
+# Plugin zip
+*.zip

@@ -1,0 +1,72 @@
+/**
+ * Segmentflow WooCommerce Admin Styles
+ *
+ * Styles for the WooCommerce > Settings > Segmentflow tab.
+ *
+ * @package Segmentflow_WooCommerce
+ */
+
+.segmentflow-settings {
+  max-width: 800px;
+}
+
+.segmentflow-connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 4px;
+}
+
+.segmentflow-connection-status--connected {
+  background-color: #edfcf2;
+  border: 1px solid #059669;
+  color: #065f46;
+}
+
+.segmentflow-connection-status--disconnected {
+  background-color: #fef3f2;
+  border: 1px solid #dc2626;
+  color: #991b1b;
+}
+
+.segmentflow-connect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background-color: #4f46e5;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.segmentflow-connect-btn:hover {
+  background-color: #4338ca;
+  color: #ffffff;
+}
+
+.segmentflow-disconnect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #ffffff;
+  color: #dc2626;
+  border: 1px solid #dc2626;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.segmentflow-disconnect-btn:hover {
+  background-color: #fef2f2;
+}

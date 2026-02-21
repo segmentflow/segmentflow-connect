@@ -1,0 +1,26 @@
+{
+  "name": "segmentflow/segmentflow-woocommerce",
+  "description": "Segmentflow for WooCommerce - AI-powered email marketing integration",
+  "type": "wordpress-plugin",
+  "license": "GPL-2.0-or-later",
+  "require": {
+    "php": ">=8.2"
+  },
+  "require-dev": {
+    "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
+    "wp-coding-standards/wpcs": "^3.0",
+    "phpcompatibility/phpcompatibility-wp": "*",
+    "phpunit/phpunit": "^9.6",
+    "yoast/phpunit-polyfills": "^2.0"
+  },
+  "config": {
+    "allow-plugins": {
+      "dealerdirect/phpcodesniffer-composer-installer": true
+    }
+  },
+  "scripts": {
+    "lint": "phpcs",
+    "lint:fix": "phpcbf",
+    "test": "phpunit"
+  }
+}

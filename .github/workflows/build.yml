@@ -1,0 +1,32 @@
+name: Build Plugin Zip
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: composer
+      - run: composer install --no-dev --no-interaction
+
+      - name: Create plugin zip
+        run: pnpm plugin:zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: segmentflow-woocommerce
+          path: segmentflow-woocommerce.zip

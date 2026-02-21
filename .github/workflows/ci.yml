@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint-typescript:
+    name: Lint TypeScript
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint:ts
+      - run: pnpm format:check
+      - run: pnpm build
+
+  lint-php:
+    name: Lint PHP
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: composer
+      - run: composer install --no-interaction
+      - run: composer lint
+
+  test-php:
+    name: Test PHP
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        php-version: ["8.2", "8.3", "8.4"]
+        wp-version: ["6.4", "latest"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: composer
+          extensions: mysqli
+      - run: composer install --no-interaction
+      - name: Install WP Test Suite
+        run: bash bin/install-wp-tests.sh wordpress_test root '' localhost ${{ matrix.wp-version }}
+      - run: composer test

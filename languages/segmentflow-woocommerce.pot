@@ -1,0 +1,23 @@
+# Copyright (C) 2026 Segmentflow
+# This file is distributed under the GPL v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Segmentflow for WooCommerce 1.0.0\n"
+"Report-Msgid-Bugs-To: https://segmentflow.ai/support\n"
+"POT-Creation-Date: 2026-02-21 00:00:00+00:00\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2026-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"X-Generator: Segmentflow\n"
+"X-Domain: segmentflow-woocommerce\n"
+
+#. Plugin Name of the plugin
+msgid "Segmentflow for WooCommerce"
+msgstr ""
+
+#. Description of the plugin
+msgid "Connect your WooCommerce store to Segmentflow for AI-powered email marketing and customer segmentation."
+msgstr ""

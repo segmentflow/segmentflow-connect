@@ -1,0 +1,41 @@
+{
+  "name": "segmentflow-woocommerce",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Connect your WooCommerce store to Segmentflow for AI-powered email marketing.",
+  "license": "GPL-2.0-or-later",
+  "scripts": {
+    "build": "tsdown",
+    "build:watch": "tsdown --watch",
+    "lint": "eslint . && pnpm lint:php",
+    "lint:ts": "eslint .",
+    "lint:php": "vendor/bin/phpcs",
+    "lint:fix": "eslint . --fix && vendor/bin/phpcbf",
+    "format": "prettier --write 'src/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.ts'",
+    "test": "pnpm test:php",
+    "test:php": "vendor/bin/phpunit",
+    "prepare": "husky",
+    "changeset": "changeset",
+    "version": "changeset version && node scripts/bump-version.mjs",
+    "release": "pnpm build && pnpm changeset publish",
+    "plugin:zip": "pnpm build && node scripts/create-zip.mjs"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.0",
+    "@changesets/changelog-github": "^0.5.0",
+    "@eslint/js": "^9.18.0",
+    "eslint": "^9.18.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.3.0",
+    "prettier": "^3.4.2",
+    "tsdown": "^0.10.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.22.0"
+  },
+  "packageManager": "pnpm@10.27.0",
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}

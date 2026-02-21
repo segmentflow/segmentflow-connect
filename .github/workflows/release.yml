@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+
+      - name: Create Release PR or Publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: pnpm version
+          publish: pnpm release
+          title: "chore: version packages"
+          commit: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-wordpress:
+    name: Deploy to WordPress.org
+    runs-on: ubuntu-24.04
+    needs: release
+    if: "github.event_name == 'push' && contains(github.event.head_commit.message, 'chore: version packages')"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          tools: composer
+      - run: composer install --no-dev --no-interaction
+
+      # TODO: Configure WP_ORG_SVN_USERNAME and WP_ORG_SVN_PASSWORD secrets
+      # once WordPress.org plugin directory credentials are available.
+      - name: Deploy to WordPress.org SVN
+        uses: 10up/action-wordpress-plugin-deploy@v2
+        with:
+          generate-zip: true
+        env:
+          SVN_USERNAME: ${{ secrets.WP_ORG_SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.WP_ORG_SVN_PASSWORD }}
+          SLUG: segmentflow-woocommerce
+          BUILD_DIR: "."
+          ASSETS_DIR: ".wordpress-org"
