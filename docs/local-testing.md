@@ -18,11 +18,8 @@ composer install
 # 2. Build the admin JS
 pnpm build
 
-# 3. Install wp-env (one-time)
-npm install -g @wordpress/env
-
-# 4. Start WordPress + WooCommerce
-wp-env start
+# 3. Start WordPress + WooCommerce
+npx @wordpress/env start
 ```
 
 Open http://localhost:8888/wp-admin and log in with `admin` / `password`.
@@ -32,17 +29,17 @@ Both Segmentflow Connect and WooCommerce are pre-installed and activated. The pl
 ## Stopping and resetting
 
 ```bash
-wp-env stop              # Stop containers (keeps data)
-wp-env start             # Start again (data preserved)
-wp-env clean all         # Reset database to fresh install
-wp-env destroy           # Remove everything (containers + data)
+npx @wordpress/env stop              # Stop containers (keeps data)
+npx @wordpress/env start             # Start again (data preserved)
+npx @wordpress/env clean all         # Reset database to fresh install
+npx @wordpress/env destroy           # Remove everything (containers + data)
 ```
 
 ## Running WP-CLI inside the environment
 
 ```bash
-wp-env run cli wp option list --search=segmentflow_*
-wp-env run cli wp plugin list
+npx @wordpress/env run cli wp option list --search=segmentflow_*
+npx @wordpress/env run cli wp plugin list
 ```
 
 ## Linting
@@ -55,7 +52,7 @@ pnpm lint:fix            # Auto-fix
 ## Running tests
 
 ```bash
-wp-env run tests-cli --env-cwd=wp-content/plugins/segmentflow-connect \
+npx @wordpress/env run tests-cli --env-cwd=wp-content/plugins/segmentflow-connect \
   vendor/bin/phpunit
 ```
 
@@ -71,12 +68,73 @@ wp i18n make-pot . languages/segmentflow-connect.pot
 pnpm plugin:zip
 ```
 
+## Testing against your backend
+
+By default the plugin talks to `https://api.cloud.segmentflow.ai`. Two other
+hosts are derived automatically from the API host:
+
+| Service         | URL                                 | Derivation                                             |
+| --------------- | ----------------------------------- | ------------------------------------------------------ |
+| API             | `https://api.cloud.segmentflow.ai`  | Configured directly (`segmentflow_api_host` option)    |
+| Dashboard (app) | `https://app.cloud.segmentflow.ai`  | `api.` replaced with `app.` in the API host            |
+| CDN SDK         | `https://cdn.segmentflow.ai/sdk.js` | Hardcoded in `includes/class-segmentflow-tracking.php` |
+
+### Overriding the API host
+
+If you need to point at a different backend (e.g. staging or a local server):
+
+```bash
+# Via WP-CLI inside the local environment
+npx @wordpress/env run cli wp option update segmentflow_api_host "https://api.staging.segmentflow.ai"
+```
+
+Or change it in **WP Admin > Segmentflow > Settings > API Host**.
+
+The dashboard host is derived automatically -- setting the API host to
+`https://api.staging.segmentflow.ai` means the connect flow will redirect to
+`https://app.staging.segmentflow.ai`.
+
+### Required backend endpoints
+
+The plugin calls two API endpoints:
+
+| Method   | Endpoint                          | Header                  | Response                                                              |
+| -------- | --------------------------------- | ----------------------- | --------------------------------------------------------------------- |
+| `GET`    | `/v1/integrations/connect/status` | `X-Poll-Token: <token>` | `{ connected: bool, write_key?: string, organization_name?: string }` |
+| `DELETE` | `/v1/integrations/disconnect`     | `X-Write-Key: <key>`    | Any 2xx                                                               |
+
+### Connection flow (end-to-end)
+
+1. User clicks "Connect to Segmentflow" in the plugin admin
+2. Plugin redirects the browser to the dashboard:
+   - **WooCommerce active:** `{app_host}/connect/woocommerce?store_url=...&return_url=...`
+   - **Plain WordPress:** `{app_host}/connect/wordpress?site_url=...&return_url=...`
+3. User completes the auth flow in the dashboard
+4. Dashboard redirects back to WordPress:
+   ```
+   http://localhost:8888/wp-admin/admin.php?page=segmentflow&connected=1&poll_token=<token>
+   ```
+5. Plugin polls `GET /v1/integrations/connect/status` with the poll token
+6. On success, the write key and organization name are stored in `wp_options`
+
+### Troubleshooting
+
+- **Redirect goes to wrong host:** Check the current API host value:
+  ```bash
+  npx @wordpress/env run cli wp option get segmentflow_api_host
+  ```
+- **Dashboard can't redirect back to localhost:** Your backend's return URL
+  allowlist must include `http://localhost:8888`.
+- **SDK not loading on frontend:** The CDN URL is hardcoded. If you need a
+  local SDK for testing, modify the `script.src` line in
+  `includes/class-segmentflow-tracking.php`.
+
 ## Manual testing checklist
 
 ### Activation and deactivation
 
 1. Activate the plugin -- no PHP errors or warnings
-2. Verify options exist: `wp-env run cli wp option list --search=segmentflow_*`
+2. Verify options exist: `npx @wordpress/env run cli wp option list --search=segmentflow_*`
 3. Deactivate -- options should be preserved
 4. Delete the plugin -- all `segmentflow_*` options should be removed
 
@@ -89,7 +147,7 @@ pnpm plugin:zip
 
 ### Connection flow
 
-1. Click "Connect to Segmentflow" -- redirects to `app.segmentflow.ai`
+1. Click "Connect to Segmentflow" -- redirects to `app.cloud.segmentflow.ai`
 2. Complete the auth flow in the Segmentflow dashboard
 3. On return, the page should show:
    - Connected status with organization name

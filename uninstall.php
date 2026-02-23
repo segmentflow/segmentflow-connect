@@ -14,7 +14,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 }
 
 // Read the API host before deleting options so we notify the correct server.
-$segmentflow_api_host = get_option( 'segmentflow_api_host', 'https://api.segmentflow.ai' );
+$segmentflow_api_host = get_option( 'segmentflow_api_host', 'https://api.cloud.segmentflow.ai' );
 
 // Load the options class for cleanup.
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-segmentflow-options.php';

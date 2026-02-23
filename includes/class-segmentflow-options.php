@@ -25,7 +25,7 @@ class Segmentflow_Options {
 	private const DEFAULTS = [
 		'segmentflow_write_key'          => '',
 		'segmentflow_organization_name'  => '',
-		'segmentflow_api_host'           => 'https://api.segmentflow.ai',
+		'segmentflow_api_host'           => 'https://api.cloud.segmentflow.ai',
 		'segmentflow_debug_mode'         => false,
 		'segmentflow_consent_required'   => false,
 		'segmentflow_connected_platform' => '', // 'wordpress' or 'woocommerce'
@@ -80,7 +80,7 @@ class Segmentflow_Options {
 	 * @return string
 	 */
 	public function get_api_host(): string {
-		return (string) $this->get( 'api_host', 'https://api.segmentflow.ai' );
+		return (string) $this->get( 'api_host', 'https://api.cloud.segmentflow.ai' );
 	}
 
 	/**
@@ -122,7 +122,7 @@ class Segmentflow_Options {
 	/**
 	 * Get the connected platform.
 	 *
-	 * @return string 'wordpress' | 'woocommerce' | '' (not connected)
+	 * @return string 'WordPress' | 'woocommerce' | '' (not connected)
 	 */
 	public function get_connected_platform(): string {
 		return (string) $this->get( 'connected_platform', '' );

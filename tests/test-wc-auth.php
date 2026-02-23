@@ -22,7 +22,7 @@ class Test_WC_Auth extends WP_UnitTestCase {
 
 		$url = Segmentflow_WC_Auth::build_auth_url(
 			'https://mystore.com',
-			'https://api.segmentflow.ai/callback',
+			'https://api.cloud.segmentflow.ai/callback',
 			'org_123',
 			'https://mystore.com/wp-admin'
 		);

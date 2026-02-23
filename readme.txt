@@ -105,7 +105,7 @@ visitor has given consent via your cookie consent solution.
 
 = Segmentflow API =
 
-The plugin communicates with the Segmentflow API (https://api.segmentflow.ai) to:
+The plugin communicates with the Segmentflow API (https://api.cloud.segmentflow.ai) to:
 
 * Check connection status during the initial setup flow
 * Notify Segmentflow when the plugin is disconnected or uninstalled
@@ -113,7 +113,7 @@ The plugin communicates with the Segmentflow API (https://api.segmentflow.ai) to
 = Segmentflow Dashboard =
 
 During the connection flow, the user is redirected to the Segmentflow dashboard
-(https://app.segmentflow.ai) to authorize the connection. When WooCommerce is
+(https://app.cloud.segmentflow.ai) to authorize the connection. When WooCommerce is
 active, this flow includes granting Segmentflow read/write API access to your
 store's customers, orders, and products via WooCommerce's built-in authorization
 screen.
