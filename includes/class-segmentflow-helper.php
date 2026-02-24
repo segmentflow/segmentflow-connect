@@ -39,10 +39,10 @@ class Segmentflow_Helper {
 	 * Returns the most specific platform identifier for the current environment.
 	 * Used to determine user ID prefix and connection flow behavior.
 	 *
-	 * @return string 'woocommerce' | 'wordpress'
+	 * @return string Platform identifier: 'woocommerce' or plain WP.
 	 */
 	public static function get_platform(): string {
-		return self::is_woocommerce_active() ? 'woocommerce' : 'wordpress';
+		return self::is_woocommerce_active() ? 'woocommerce' : 'wordpress'; // phpcs:ignore WordPress.WP.CapitalPDangit.MisspelledInText
 	}
 
 	/**
@@ -64,9 +64,6 @@ class Segmentflow_Helper {
 		return untrailingslashit( esc_url_raw( $url ) );
 	}
 
-	// Future detection methods:
-	// public static function is_cf7_active(): bool { ... }
-	// public static function is_elementor_active(): bool { ... }
-	// public static function is_gravity_forms_active(): bool { ... }
-	// public static function is_wpforms_active(): bool { ... }
+	// Future: add detection methods for Contact Form 7, Elementor,
+	// Gravity Forms, WPForms, and other integrations.
 }

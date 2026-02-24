@@ -29,14 +29,14 @@ class Test_Helper extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that get_platform returns 'wordpress' when WooCommerce is not active.
+	 * Test that get_platform returns the plain platform identifier when WooCommerce is not active.
 	 */
 	public function test_get_platform_without_woocommerce(): void {
 		if ( Segmentflow_Helper::is_woocommerce_active() ) {
 			$this->markTestSkipped( 'WooCommerce is active in this environment.' );
 		}
 
-		$this->assertEquals( 'wordpress', Segmentflow_Helper::get_platform() );
+		$this->assertEquals( 'wordpress', Segmentflow_Helper::get_platform() ); // phpcs:ignore WordPress.WP.CapitalPDangit.MisspelledInText
 	}
 
 	/**

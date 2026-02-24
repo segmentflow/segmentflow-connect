@@ -94,6 +94,10 @@ class Segmentflow_Tracking {
 			$prefix = 'wc_';
 		}
 
+		// Security: all PHP values injected into JavaScript below use wp_json_encode(),
+		// which produces valid JSON literals and escapes characters that could break
+		// out of a <script> context (e.g., </script>, HTML entities). This is the
+		// WordPress-recommended approach for safe PHP-to-JS data transfer.
 		?>
 		<!-- Segmentflow Connect v<?php echo esc_html( SEGMENTFLOW_VERSION ); ?> -->
 		<script>

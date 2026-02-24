@@ -68,7 +68,7 @@ class Segmentflow_Lifecycle {
 	 * @param string $plugin  Path to the plugin file relative to the plugins directory.
 	 * @param bool   $network Whether this is a network-wide activation.
 	 */
-	public function check_for_dependency( string $plugin, bool $network ): void {
+	public function check_for_dependency( string $plugin, bool $network ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- Required by activated_plugin hook signature.
 		if ( 'woocommerce/woocommerce.php' !== $plugin ) {
 			return;
 		}
@@ -77,7 +77,7 @@ class Segmentflow_Lifecycle {
 		// If we're already connected as a plain WordPress site, set a transient
 		// to show an admin notice suggesting WC connection upgrade.
 		$options = new Segmentflow_Options();
-		if ( $options->is_connected() && 'WordPress' === $options->get_connected_platform() ) {
+		if ( $options->is_connected() && 'wordpress' === $options->get_connected_platform() ) { // phpcs:ignore WordPress.WP.CapitalPDangit.MisspelledInText -- Platform identifier.
 			set_transient( 'segmentflow_wc_upgrade_notice', true, 0 );
 		}
 	}

@@ -123,6 +123,13 @@ screen.
 * [Segmentflow Terms of Service](https://segmentflow.ai/terms)
 * [Segmentflow Privacy Policy](https://segmentflow.ai/privacy)
 
+== Screenshots ==
+
+1. Connection page -- Connect your WordPress site to Segmentflow with one click
+2. Connected state -- Organization name, platform, write key, and tracking status
+3. Settings -- Debug mode, consent required, API host override
+4. WooCommerce integration -- Store URL, WC version, currency, and enrichment status
+
 == Changelog ==
 
 = 1.0.0 =

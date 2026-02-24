@@ -29,7 +29,8 @@ class Segmentflow_Options {
 		'segmentflow_app_host'           => 'https://dashboard.segmentflow.ai',
 		'segmentflow_debug_mode'         => false,
 		'segmentflow_consent_required'   => false,
-		'segmentflow_connected_platform' => '', // 'wordpress' or 'woocommerce'
+		// Platform identifier: 'wordpress' or 'woocommerce'.
+		'segmentflow_connected_platform' => '',
 	];
 
 	/**
@@ -39,6 +40,7 @@ class Segmentflow_Options {
 	 * @param mixed  $default Default value if option is not set.
 	 * @return mixed
 	 */
+	// phpcs:ignore Universal.NamingConventions.NoReservedKeywordParameterNames.defaultFound -- Descriptive name for a fallback parameter.
 	public function get( string $key, mixed $default = null ): mixed {
 		$full_key = $this->normalize_key( $key );
 		$fallback = $default ?? ( self::DEFAULTS[ $full_key ] ?? null );

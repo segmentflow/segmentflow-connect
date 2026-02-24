@@ -89,4 +89,49 @@ class Test_Tracking extends WP_UnitTestCase {
 		// Cleanup.
 		delete_option( 'segmentflow_write_key' );
 	}
+
+	/**
+	 * Test that SDK output includes consentRequired when enabled.
+	 */
+	public function test_sdk_includes_consent_required_when_enabled(): void {
+		update_option( 'segmentflow_write_key', 'test_key_abc' );
+		update_option( 'segmentflow_consent_required', true );
+
+		$options  = new Segmentflow_Options();
+		$tracking = new Segmentflow_Tracking( $options );
+
+		ob_start();
+		$tracking->inject_sdk();
+		$output = ob_get_clean();
+
+		$this->assertStringContainsString( 'consentRequired', $output );
+		// The value should be true in the JS output.
+		$this->assertStringContainsString( 'consentRequired: true', $output );
+
+		// Cleanup.
+		delete_option( 'segmentflow_write_key' );
+		delete_option( 'segmentflow_consent_required' );
+	}
+
+	/**
+	 * Test that SDK output includes debug mode when enabled.
+	 */
+	public function test_sdk_includes_debug_mode_when_enabled(): void {
+		update_option( 'segmentflow_write_key', 'test_key_abc' );
+		update_option( 'segmentflow_debug_mode', true );
+
+		$options  = new Segmentflow_Options();
+		$tracking = new Segmentflow_Tracking( $options );
+
+		ob_start();
+		$tracking->inject_sdk();
+		$output = ob_get_clean();
+
+		// The debug value should be true in the JS output.
+		$this->assertStringContainsString( 'debug: true', $output );
+
+		// Cleanup.
+		delete_option( 'segmentflow_write_key' );
+		delete_option( 'segmentflow_debug_mode' );
+	}
 }
