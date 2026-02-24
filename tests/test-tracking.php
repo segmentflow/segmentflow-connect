@@ -42,7 +42,7 @@ class Test_Tracking extends WP_UnitTestCase {
 		$output = ob_get_clean();
 
 		$this->assertStringContainsString( 'Segmentflow Connect', $output );
-		$this->assertStringContainsString( 'cdn.segmentflow.ai/sdk.js', $output );
+		$this->assertStringContainsString( 'cdn.cloud.segmentflow.ai/sdk.js', $output );
 		$this->assertStringContainsString( 'test_key_abc', $output );
 
 		// Cleanup.

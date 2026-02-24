@@ -93,7 +93,7 @@ email marketing and customer data platform. A Segmentflow account is required.
 = Segmentflow Tracking SDK =
 
 When the plugin is connected, a JavaScript tracking SDK is loaded from
-Segmentflow's CDN (https://cdn.segmentflow.ai/sdk.js) on all frontend pages.
+Segmentflow's CDN (https://cdn.cloud.segmentflow.ai/sdk.js) on all frontend pages.
 This SDK collects page view events and, for logged-in users, sends their
 WordPress user ID and email address to Segmentflow for visitor identification.
 

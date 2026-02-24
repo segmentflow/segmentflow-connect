@@ -72,11 +72,11 @@ pnpm plugin:zip
 
 The plugin uses three external hosts, each configured independently:
 
-| Service   | Default URL                         | Option key                                             |
-| --------- | ----------------------------------- | ------------------------------------------------------ |
-| API       | `https://api.cloud.segmentflow.ai`  | `segmentflow_api_host`                                 |
-| Dashboard | `https://dashboard.segmentflow.ai`  | `segmentflow_app_host`                                 |
-| CDN SDK   | `https://cdn.segmentflow.ai/sdk.js` | Hardcoded in `includes/class-segmentflow-tracking.php` |
+| Service   | Default URL                               | Option key                                             |
+| --------- | ----------------------------------------- | ------------------------------------------------------ |
+| API       | `https://api.cloud.segmentflow.ai`        | `segmentflow_api_host`                                 |
+| Dashboard | `https://dashboard.segmentflow.ai`        | `segmentflow_app_host`                                 |
+| CDN SDK   | `https://cdn.cloud.segmentflow.ai/sdk.js` | Hardcoded in `includes/class-segmentflow-tracking.php` |
 
 ### Overriding hosts
 
@@ -162,7 +162,7 @@ The plugin calls two API endpoints:
 
 1. Visit any frontend page
 2. View page source -- look for `<!-- Segmentflow Connect v1.0.0 -->`
-3. `cdn.segmentflow.ai/sdk.js` should be loaded async
+3. `cdn.cloud.segmentflow.ai/sdk.js` should be loaded async
 4. If logged in, `segmentflow.identify()` should include user ID and email
 5. Enable Debug Mode in settings, check browser console for SDK output
 

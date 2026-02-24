@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
  * Class Segmentflow_Tracking
  *
  * Handles injection of the Segmentflow CDN SDK script into the storefront.
- * The SDK is loaded from cdn.segmentflow.ai and initialized with the site's
+ * The SDK is loaded from cdn.cloud.segmentflow.ai and initialized with the site's
  * write key and WordPress user context.
  *
  * Integration-specific context (WooCommerce cart, currency, etc.) is added
@@ -121,7 +121,7 @@ class Segmentflow_Tracking {
 			<?php endif; ?>
 
 			var script = document.createElement('script');
-			script.src = 'https://cdn.segmentflow.ai/sdk.js';
+			script.src = 'https://cdn.cloud.segmentflow.ai/sdk.js';
 			script.async = true;
 			script.onload = function() {
 				if (typeof window.segmentflow === 'undefined') return;
@@ -135,14 +135,20 @@ class Segmentflow_Tracking {
 						Object.assign(traits, integrationContext.traits);
 					}
 					<?php endif; ?>
-					window.segmentflow.identify(<?php echo wp_json_encode( $prefix ); ?> + wpContext.userId, traits);
-				}
 
-				<?php if ( $has_extra ) : ?>
-				if (typeof integrationContext !== 'undefined' && integrationContext.context) {
-					window.segmentflow.setContext(integrationContext.context);
+					var identifyParams = {
+						userId: <?php echo wp_json_encode( $prefix ); ?> + wpContext.userId,
+						traits: traits
+					};
+
+					<?php if ( $has_extra ) : ?>
+					if (typeof integrationContext !== 'undefined' && integrationContext.context) {
+						identifyParams.context = integrationContext.context;
+					}
+					<?php endif; ?>
+
+					window.segmentflow.identify(identifyParams);
 				}
-				<?php endif; ?>
 			};
 			document.head.appendChild(script);
 		})();
