@@ -149,6 +149,10 @@ class Segmentflow_Admin {
 
 		$auth = new Segmentflow_Auth( $this->options );
 
+		// Read poll token from URL if present (auth return redirect).
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Auth return from external redirect.
+		$poll_token = isset( $_GET['poll_token'] ) ? sanitize_text_field( wp_unslash( $_GET['poll_token'] ) ) : '';
+
 		wp_localize_script(
 			'segmentflow-admin',
 			'segmentflowAdmin',
@@ -157,6 +161,8 @@ class Segmentflow_Admin {
 				'isConnected' => $auth->is_connected(),
 				'nonce'       => wp_create_nonce( 'segmentflow-admin' ),
 				'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
+				'apiHost'     => $this->options->get_api_host(),
+				'pollToken'   => $poll_token,
 			]
 		);
 	}

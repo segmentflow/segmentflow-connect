@@ -17,9 +17,15 @@ interface SegmentflowAdminConfig {
   isConnected: boolean;
   nonce: string;
   ajaxUrl: string;
+  apiHost: string;
+  pollToken: string;
 }
 
 declare const segmentflowAdmin: SegmentflowAdminConfig;
+
+/** Polling configuration. */
+const POLL_INTERVAL_MS = 2500;
+const MAX_POLL_ATTEMPTS = 12; // 30 seconds total
 
 /**
  * Initialize the admin page interactions.
@@ -36,10 +42,9 @@ function init(): void {
     disconnectButton.addEventListener("click", handleDisconnect);
   }
 
-  // Check if we just returned from the auth flow.
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get("connected") === "1") {
-    handleAuthReturn(urlParams.get("poll_token") ?? "");
+  // Check if we just returned from the auth flow with a poll token.
+  if (segmentflowAdmin.pollToken) {
+    handleAuthReturn(segmentflowAdmin.pollToken);
   }
 }
 
@@ -85,12 +90,150 @@ function handleDisconnect(event: Event): void {
 
 /**
  * Handle the return from the auth flow.
- * Polls the Segmentflow API for connection status and write key.
+ *
+ * Polls the Segmentflow API for connection status using the poll token.
+ * On success, saves the write key via WordPress AJAX and reloads the page.
+ * Shows a connecting spinner during polling and an error message on timeout.
  */
-function handleAuthReturn(_pollToken: string): void {
-  // TODO: Implement polling for write key.
-  // The server-side handle_return() in Segmentflow_Auth processes the poll token.
-  // On success, the page reloads to show connected state.
+async function handleAuthReturn(pollToken: string): Promise<void> {
+  if (!pollToken) return;
+
+  // Clean up URL parameters immediately.
+  const cleanUrl = new URL(window.location.href);
+  cleanUrl.searchParams.delete("connected");
+  cleanUrl.searchParams.delete("poll_token");
+  history.replaceState({}, "", cleanUrl.toString());
+
+  // Show connecting state in the UI.
+  showConnectingState();
+
+  let attempts = 0;
+
+  while (attempts < MAX_POLL_ATTEMPTS) {
+    attempts++;
+
+    try {
+      const response = await fetch(
+        `${segmentflowAdmin.apiHost}/api/v1/integrations/connect/status`,
+        {
+          method: "GET",
+          headers: {
+            "X-Poll-Token": pollToken,
+            Accept: "application/json",
+          },
+        },
+      );
+
+      if (!response.ok) {
+        // 404/410 -- token expired or already consumed.
+        if (response.status === 404 || response.status === 410) {
+          showConnectionError("Connection token expired. Please try again.");
+          return;
+        }
+        // Other server errors -- keep polling.
+        await sleep(POLL_INTERVAL_MS);
+        continue;
+      }
+
+      const data: { connected?: boolean; write_key?: string; organization_name?: string } =
+        await response.json();
+
+      if (data.connected && data.write_key) {
+        // Save the write key via WordPress AJAX.
+        await saveConnection(data.write_key, data.organization_name ?? "");
+        window.location.reload();
+        return;
+      }
+    } catch {
+      // Network error -- keep polling.
+    }
+
+    await sleep(POLL_INTERVAL_MS);
+  }
+
+  // Timed out after all attempts.
+  showConnectionError("Connection timed out. Please try connecting again.");
+}
+
+/**
+ * Save the connection data to WordPress via AJAX.
+ */
+async function saveConnection(writeKey: string, organizationName: string): Promise<void> {
+  const formData = new FormData();
+  formData.append("action", "segmentflow_save_connection");
+  formData.append("nonce", segmentflowAdmin.nonce);
+  formData.append("write_key", writeKey);
+  formData.append("organization_name", organizationName);
+
+  const response = await fetch(segmentflowAdmin.ajaxUrl, {
+    method: "POST",
+    body: formData,
+  });
+
+  const data: { success: boolean; data?: { message?: string } } = await response.json();
+  if (!data.success) {
+    throw new Error(data.data?.message ?? "Failed to save connection.");
+  }
+}
+
+/**
+ * Show the connecting/polling state in the admin UI.
+ */
+function showConnectingState(): void {
+  const connectBtn = document.getElementById("segmentflow-connect");
+  if (connectBtn) {
+    connectBtn.classList.add("segmentflow-connect-btn--loading");
+    connectBtn.textContent = "Connecting\u2026";
+    connectBtn.setAttribute("aria-disabled", "true");
+    (connectBtn as HTMLAnchorElement).style.pointerEvents = "none";
+  }
+
+  // Replace the disconnected status banner with a connecting banner.
+  const disconnectedBanner = document.querySelector(".segmentflow-connection-status--disconnected");
+  if (disconnectedBanner) {
+    disconnectedBanner.className =
+      "segmentflow-connection-status segmentflow-connection-status--connecting";
+    disconnectedBanner.innerHTML =
+      '<span class="dashicons dashicons-update segmentflow-spin"></span>' +
+      "<strong>Connecting to Segmentflow\u2026</strong>";
+  }
+}
+
+/**
+ * Show a connection error message in the admin UI.
+ */
+function showConnectionError(message: string): void {
+  const banner = document.querySelector(".segmentflow-connection-status--connecting");
+  if (banner) {
+    banner.className = "segmentflow-connection-status segmentflow-connection-status--disconnected";
+    banner.innerHTML =
+      '<span class="dashicons dashicons-warning"></span>' +
+      `<strong>${escapeHtml(message)}</strong>`;
+  }
+
+  const connectBtn = document.getElementById("segmentflow-connect");
+  if (connectBtn) {
+    connectBtn.classList.remove("segmentflow-connect-btn--loading");
+    connectBtn.textContent = "Try Again";
+    connectBtn.removeAttribute("aria-disabled");
+    (connectBtn as HTMLAnchorElement).style.pointerEvents = "";
+  }
+}
+
+/**
+ * Escape HTML entities to prevent XSS in dynamic UI messages.
+ */
+function escapeHtml(text: string): string {
+  const el = document.createElement("span");
+  el.textContent = text;
+  return el.innerHTML;
+}
+
+/**
+ * Promise-based sleep utility.
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // Initialize when DOM is ready.

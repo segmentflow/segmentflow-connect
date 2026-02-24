@@ -39,10 +39,8 @@ class Segmentflow_Auth {
 	 * Register WordPress hooks.
 	 */
 	public function register_hooks(): void {
-		// Handle the auth return query parameter.
-		add_action( 'admin_init', [ $this, 'maybe_handle_return' ] );
-
-		// Register AJAX handler for disconnect.
+		// Register AJAX handlers for connection management.
+		add_action( 'wp_ajax_segmentflow_save_connection', [ $this, 'ajax_save_connection' ] );
 		add_action( 'wp_ajax_segmentflow_disconnect', [ $this, 'ajax_disconnect' ] );
 	}
 
@@ -82,61 +80,34 @@ class Segmentflow_Auth {
 	}
 
 	/**
-	 * Check for and handle the auth return redirect.
+	 * AJAX handler for saving a connection from client-side polling.
 	 *
-	 * Called on admin_init. Detects the 'connected' query parameter and
-	 * processes the poll token to retrieve the write key.
+	 * Called by the admin JS after it polls the Segmentflow API and receives
+	 * a write key. Stores the write key and organization name in wp_options.
 	 */
-	public function maybe_handle_return(): void {
+	public function ajax_save_connection(): void {
+		check_ajax_referer( 'segmentflow-admin', 'nonce' );
+
 		if ( ! current_user_can( 'manage_options' ) ) {
-			return;
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'segmentflow-connect' ) ] );
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Auth return from external redirect.
-		if ( ! isset( $_GET['page'] ) || 'segmentflow' !== sanitize_key( wp_unslash( $_GET['page'] ) ) ) {
-			return;
+		$write_key = isset( $_POST['write_key'] ) ? sanitize_text_field( wp_unslash( $_POST['write_key'] ) ) : '';
+		$org_name  = isset( $_POST['organization_name'] ) ? sanitize_text_field( wp_unslash( $_POST['organization_name'] ) ) : '';
+
+		if ( empty( $write_key ) ) {
+			wp_send_json_error( [ 'message' => __( 'Missing write key.', 'segmentflow-connect' ) ] );
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Auth return from external redirect.
-		if ( ! isset( $_GET['connected'] ) || '1' !== sanitize_text_field( wp_unslash( $_GET['connected'] ) ) ) {
-			return;
+		$this->options->set( 'write_key', $write_key );
+
+		if ( ! empty( $org_name ) ) {
+			$this->options->set( 'organization_name', $org_name );
 		}
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Auth return from external redirect.
-		$poll_token = isset( $_GET['poll_token'] ) ? sanitize_text_field( wp_unslash( $_GET['poll_token'] ) ) : '';
+		$this->options->set( 'connected_platform', Segmentflow_Helper::get_platform() );
 
-		if ( ! empty( $poll_token ) ) {
-			$this->handle_return( $poll_token );
-		}
-	}
-
-	/**
-	 * Handle the return from the auth flow.
-	 *
-	 * Polls the Segmentflow API for connection status and stores the write key.
-	 *
-	 * @param string $poll_token The temporary token for polling connection status.
-	 * @return bool Whether the write key was successfully retrieved and stored.
-	 */
-	public function handle_return( string $poll_token ): bool {
-		$api    = new Segmentflow_API( $this->options );
-		$status = $api->check_status( $poll_token );
-
-		if ( ! empty( $status['connected'] ) && ! empty( $status['write_key'] ) ) {
-			$this->options->set( 'write_key', sanitize_text_field( $status['write_key'] ) );
-
-			if ( ! empty( $status['organization_name'] ) ) {
-				$this->options->set( 'organization_name', sanitize_text_field( $status['organization_name'] ) );
-			}
-
-			// Store which platform was connected.
-			$platform = Segmentflow_Helper::get_platform();
-			$this->options->set( 'connected_platform', $platform );
-
-			return true;
-		}
-
-		return false;
+		wp_send_json_success( [ 'message' => __( 'Connected to Segmentflow.', 'segmentflow-connect' ) ] );
 	}
 
 	/**
