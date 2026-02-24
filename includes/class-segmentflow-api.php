@@ -43,7 +43,7 @@ class Segmentflow_API {
 	public function check_status( string $poll_token ): array {
 		$response = $this->request(
 			'GET',
-			'/v1/integrations/connect/status',
+			'/api/v1/integrations/connect/status',
 			[],
 			[
 				'X-Poll-Token' => $poll_token,
@@ -76,7 +76,7 @@ class Segmentflow_API {
 
 		$response = $this->request(
 			'DELETE',
-			'/v1/integrations/disconnect',
+			'/api/v1/integrations/connect/disconnect',
 			[],
 			[
 				'X-Write-Key' => $write_key,
@@ -90,7 +90,7 @@ class Segmentflow_API {
 	 * Make an HTTP request to the Segmentflow API.
 	 *
 	 * @param string               $method   HTTP method (GET, POST, DELETE).
-	 * @param string               $endpoint API endpoint path (e.g., '/v1/integrations/status').
+	 * @param string               $endpoint API endpoint path (e.g., '/api/v1/integrations/connect/status').
 	 * @param array<string, mixed> $body     Request body (for POST/PUT).
 	 * @param array<string, string>$headers  Additional headers.
 	 * @return array{success: bool, data?: array<string, mixed>, error?: string}
