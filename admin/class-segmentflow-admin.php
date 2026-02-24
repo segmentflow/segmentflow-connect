@@ -89,7 +89,7 @@ class Segmentflow_Admin {
 
 		// Determine current tab.
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Tab navigation only.
-		$current_tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'connection';
+		$current_tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'connection';
 		$tabs        = $this->get_tabs();
 
 		// Ensure tab exists.
