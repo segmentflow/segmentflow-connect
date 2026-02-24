@@ -14,6 +14,17 @@
   margin-top: 20px;
 }
 
+/* Logo */
+.segmentflow-logo {
+  margin-bottom: 20px;
+}
+
+.segmentflow-logo img {
+  max-width: 200px;
+  height: auto;
+}
+
+/* Connection status banners */
 .segmentflow-connection-status {
   display: flex;
   align-items: center;
@@ -35,6 +46,44 @@
   color: #991b1b;
 }
 
+/* Description */
+.segmentflow-description {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #374151;
+  max-width: 680px;
+}
+
+/* Feature blocks */
+.segmentflow-features {
+  margin: 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.segmentflow-feature {
+  padding: 16px 20px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.segmentflow-feature h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.segmentflow-feature p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #4b5563;
+}
+
+/* Connect button */
 .segmentflow-connect-btn {
   display: inline-flex;
   align-items: center;
@@ -56,6 +105,7 @@
   color: #ffffff;
 }
 
+/* Disconnect button */
 .segmentflow-disconnect-btn {
   display: inline-flex;
   align-items: center;
@@ -75,6 +125,7 @@
   background-color: #fef2f2;
 }
 
+/* Badges */
 .segmentflow-badge {
   display: inline-block;
   padding: 2px 8px;

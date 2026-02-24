@@ -113,7 +113,7 @@ The plugin communicates with the Segmentflow API (https://api.cloud.segmentflow.
 = Segmentflow Dashboard =
 
 During the connection flow, the user is redirected to the Segmentflow dashboard
-(https://app.cloud.segmentflow.ai) to authorize the connection. When WooCommerce is
+(https://dashboard.segmentflow.ai) to authorize the connection. When WooCommerce is
 active, this flow includes granting Segmentflow read/write API access to your
 store's customers, orders, and products via WooCommerce's built-in authorization
 screen.

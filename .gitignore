@@ -6,9 +6,10 @@ vendor/
 assets/js/*.js
 assets/js/*.js.map
 
-# IDE
+# IDE / AI tooling
 .idea/
 .vscode/
+.opencode/
 *.swp
 *.swo
 

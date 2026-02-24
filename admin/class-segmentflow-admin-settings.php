@@ -99,6 +99,29 @@ class Segmentflow_Admin_Settings {
 				'description' => __( 'Override the Segmentflow API host URL. Leave default unless instructed.', 'segmentflow-connect' ),
 			]
 		);
+
+		// Dashboard host override.
+		register_setting(
+			'segmentflow-settings',
+			'segmentflow_app_host',
+			[
+				'type'              => 'string',
+				'sanitize_callback' => 'esc_url_raw',
+				'default'           => 'https://dashboard.segmentflow.ai',
+			]
+		);
+
+		add_settings_field(
+			'segmentflow_app_host',
+			__( 'Dashboard Host', 'segmentflow-connect' ),
+			[ __CLASS__, 'render_text_field' ],
+			'segmentflow-settings',
+			'segmentflow_settings_section',
+			[
+				'id'          => 'segmentflow_app_host',
+				'description' => __( 'Override the Segmentflow dashboard URL. Leave default unless instructed.', 'segmentflow-connect' ),
+			]
+		);
 	}
 
 	/**

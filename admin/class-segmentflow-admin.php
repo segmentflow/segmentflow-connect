@@ -51,13 +51,30 @@ class Segmentflow_Admin {
 	 * Add the Segmentflow top-level menu page.
 	 */
 	public function add_menu_page(): void {
+		// Use a custom icon for the sidebar menu if it exists (SVG preferred, PNG fallback).
+		$icon = 'dashicons-email-alt';
+
+		$svg_path = SEGMENTFLOW_PATH . 'assets/images/icon.svg';
+		$png_path = SEGMENTFLOW_PATH . 'assets/images/icon.png';
+
+		if ( file_exists( $svg_path ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local file read.
+			$svg_content = file_get_contents( $svg_path );
+			if ( false !== $svg_content ) {
+				// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- Required for WP menu icon data URI.
+				$icon = 'data:image/svg+xml;base64,' . base64_encode( $svg_content );
+			}
+		} elseif ( file_exists( $png_path ) ) {
+			$icon = SEGMENTFLOW_URL . 'assets/images/icon.png';
+		}
+
 		add_menu_page(
 			__( 'Segmentflow', 'segmentflow-connect' ),
 			__( 'Segmentflow', 'segmentflow-connect' ),
 			'manage_options',
 			'segmentflow',
 			[ $this, 'render_page' ],
-			'dashicons-email-alt',
+			$icon,
 			58
 		);
 	}

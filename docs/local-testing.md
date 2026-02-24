@@ -70,29 +70,25 @@ pnpm plugin:zip
 
 ## Testing against your backend
 
-By default the plugin talks to `https://api.cloud.segmentflow.ai`. Two other
-hosts are derived automatically from the API host:
+The plugin uses three external hosts, each configured independently:
 
-| Service         | URL                                 | Derivation                                             |
-| --------------- | ----------------------------------- | ------------------------------------------------------ |
-| API             | `https://api.cloud.segmentflow.ai`  | Configured directly (`segmentflow_api_host` option)    |
-| Dashboard (app) | `https://app.cloud.segmentflow.ai`  | `api.` replaced with `app.` in the API host            |
-| CDN SDK         | `https://cdn.segmentflow.ai/sdk.js` | Hardcoded in `includes/class-segmentflow-tracking.php` |
+| Service   | Default URL                         | Option key                                             |
+| --------- | ----------------------------------- | ------------------------------------------------------ |
+| API       | `https://api.cloud.segmentflow.ai`  | `segmentflow_api_host`                                 |
+| Dashboard | `https://dashboard.segmentflow.ai`  | `segmentflow_app_host`                                 |
+| CDN SDK   | `https://cdn.segmentflow.ai/sdk.js` | Hardcoded in `includes/class-segmentflow-tracking.php` |
 
-### Overriding the API host
+### Overriding hosts
 
-If you need to point at a different backend (e.g. staging or a local server):
+If you need to point at different servers (e.g. staging or local):
 
 ```bash
 # Via WP-CLI inside the local environment
 npx @wordpress/env run cli wp option update segmentflow_api_host "https://api.staging.segmentflow.ai"
+npx @wordpress/env run cli wp option update segmentflow_app_host "https://dashboard.staging.segmentflow.ai"
 ```
 
-Or change it in **WP Admin > Segmentflow > Settings > API Host**.
-
-The dashboard host is derived automatically -- setting the API host to
-`https://api.staging.segmentflow.ai` means the connect flow will redirect to
-`https://app.staging.segmentflow.ai`.
+Or change them in **WP Admin > Segmentflow > Settings > API Host / Dashboard Host**.
 
 ### Required backend endpoints
 
@@ -147,7 +143,7 @@ The plugin calls two API endpoints:
 
 ### Connection flow
 
-1. Click "Connect to Segmentflow" -- redirects to `app.cloud.segmentflow.ai`
+1. Click "Connect to Segmentflow" -- redirects to `dashboard.segmentflow.ai`
 2. Complete the auth flow in the Segmentflow dashboard
 3. On return, the page should show:
    - Connected status with organization name

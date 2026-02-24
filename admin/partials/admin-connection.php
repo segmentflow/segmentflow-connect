@@ -66,7 +66,7 @@ $platform = Segmentflow_Helper::get_platform();
 		</tbody>
 	</table>
 
-	<?php if ( ! Segmentflow_Helper::is_woocommerce_active() && 'wordpress' === $connected_platform ) : ?>
+	<?php if ( ! Segmentflow_Helper::is_woocommerce_active() && 'WordPress' === $connected_platform ) : ?>
 		<div class="notice notice-info inline">
 			<p>
 				<?php esc_html_e( 'WooCommerce not detected. Install WooCommerce for order tracking, customer sync, and revenue attribution.', 'segmentflow-connect' ); ?>
@@ -81,34 +81,76 @@ $platform = Segmentflow_Helper::get_platform();
 	</p>
 
 <?php else : ?>
+	<?php
+	// Check for logo file: try SVG first, then PNG.
+	$logo_path = SEGMENTFLOW_PATH . 'assets/images/logo.svg';
+	$logo_url  = SEGMENTFLOW_URL . 'assets/images/logo.svg';
+
+	if ( ! file_exists( $logo_path ) ) {
+		$logo_path = SEGMENTFLOW_PATH . 'assets/images/logo.png';
+		$logo_url  = SEGMENTFLOW_URL . 'assets/images/logo.png';
+	}
+
+	if ( file_exists( $logo_path ) ) :
+		?>
+		<div class="segmentflow-logo">
+			<img src="<?php echo esc_url( $logo_url ); ?>" alt="<?php esc_attr_e( 'Segmentflow', 'segmentflow-connect' ); ?>" />
+		</div>
+	<?php endif; ?>
+
 	<div class="segmentflow-connection-status segmentflow-connection-status--disconnected">
 		<span class="dashicons dashicons-warning"></span>
 		<strong><?php esc_html_e( 'Not connected to Segmentflow', 'segmentflow-connect' ); ?></strong>
 	</div>
 
-	<h2><?php esc_html_e( 'Connect to Segmentflow', 'segmentflow-connect' ); ?></h2>
-	<p>
+	<h2><?php esc_html_e( 'The 60-Second Marketing Team', 'segmentflow-connect' ); ?></h2>
+	<p class="segmentflow-description">
 		<?php
 		if ( Segmentflow_Helper::is_woocommerce_active() ) {
-			esc_html_e( 'Connect your WooCommerce store to Segmentflow for AI-powered email marketing, customer segmentation, and revenue attribution.', 'segmentflow-connect' );
+			esc_html_e( 'Segmentflow does the work of a data analyst, a designer, and a copywriter in the time it takes to brew a cup of coffee. Stop wrestling with complex segment builders and clunky drag-and-drop editors. Segmentflow uses AI to turn your WooCommerce data into high-converting campaigns through simple conversation.', 'segmentflow-connect' );
 		} else {
-			esc_html_e( 'Connect your WordPress site to Segmentflow for page view tracking and visitor identification.', 'segmentflow-connect' );
+			esc_html_e( 'Segmentflow does the work of a data analyst, a designer, and a copywriter in the time it takes to brew a cup of coffee. Stop wrestling with complex segment builders and clunky drag-and-drop editors. Segmentflow uses AI to turn your WordPress data into high-converting campaigns through simple conversation.', 'segmentflow-connect' );
 		}
 		?>
 	</p>
 
-	<ul class="ul-disc">
+	<div class="segmentflow-features">
+		<div class="segmentflow-feature">
+			<h3><?php esc_html_e( 'Talk to your data', 'segmentflow-connect' ); ?></h3>
+			<p>
+				<?php esc_html_e( 'Stop clicking through dropdowns. Describe your audience in plain English — like "Customers who bought twice but haven\'t opened an email in a month" — and we\'ll build the segment instantly.', 'segmentflow-connect' ); ?>
+			</p>
+		</div>
+
+		<div class="segmentflow-feature">
+			<h3><?php esc_html_e( 'Brand-aware creative', 'segmentflow-connect' ); ?></h3>
+			<p>
+				<?php
+				if ( Segmentflow_Helper::is_woocommerce_active() ) {
+					esc_html_e( 'AI that actually knows your brand. We automatically pull your WooCommerce product photos, logos, and color palette to generate professional, ready-to-send templates. No designer or manual work required.', 'segmentflow-connect' );
+				} else {
+					esc_html_e( 'AI that actually knows your brand. We automatically pull your logos and color palette to generate professional, ready-to-send templates. No designer or manual work required.', 'segmentflow-connect' );
+				}
+				?>
+			</p>
+		</div>
+
+		<div class="segmentflow-feature">
+			<h3><?php esc_html_e( 'One-click campaign sending', 'segmentflow-connect' ); ?></h3>
+			<p>
+				<?php esc_html_e( 'A streamlined platform built for speed. Launch your marketing campaigns in seconds and get real-time delivery stats (opens, clicks, and bounces) without the enterprise complexity.', 'segmentflow-connect' ); ?>
+			</p>
+		</div>
+
 		<?php if ( Segmentflow_Helper::is_woocommerce_active() ) : ?>
-			<li><?php esc_html_e( 'Automatic customer and order data sync', 'segmentflow-connect' ); ?></li>
-			<li><?php esc_html_e( 'Real-time webhooks for new orders and customer updates', 'segmentflow-connect' ); ?></li>
-			<li><?php esc_html_e( 'Pre-built customer segments (Repeat Customers, Churning, etc.)', 'segmentflow-connect' ); ?></li>
-			<li><?php esc_html_e( 'Revenue attribution for email campaigns', 'segmentflow-connect' ); ?></li>
-		<?php else : ?>
-			<li><?php esc_html_e( 'Page view tracking', 'segmentflow-connect' ); ?></li>
-			<li><?php esc_html_e( 'Automatic visitor identification for logged-in users', 'segmentflow-connect' ); ?></li>
-			<li><?php esc_html_e( 'Browser context and referrer tracking', 'segmentflow-connect' ); ?></li>
+			<div class="segmentflow-feature">
+				<h3><?php esc_html_e( 'Stop Guessing. Start Banking.', 'segmentflow-connect' ); ?></h3>
+				<p>
+					<?php esc_html_e( 'Open rates are a vanity metric; revenue is a reality check. Segmentflow bridges the gap between your sent folder and your WooCommerce checkout. Don\'t just track who clicked — track who paid. See the exact dollar amount every AI-generated campaign puts into your pocket.', 'segmentflow-connect' ); ?>
+				</p>
+			</div>
 		<?php endif; ?>
-	</ul>
+	</div>
 
 	<p>
 		<a href="#" id="segmentflow-connect" class="segmentflow-connect-btn">
@@ -121,7 +163,7 @@ $platform = Segmentflow_Helper::get_platform();
 		printf(
 			/* translators: %s: Segmentflow signup URL */
 			esc_html__( 'Don\'t have an account? %s', 'segmentflow-connect' ),
-			'<a href="https://segmentflow.ai" target="_blank" rel="noopener">' . esc_html__( 'Sign up for free', 'segmentflow-connect' ) . '</a>'
+			'<a href="https://dashboard.segmentflow.ai/auth/signup" target="_blank" rel="noopener">' . esc_html__( 'Sign up for free', 'segmentflow-connect' ) . '</a>'
 		);
 		?>
 	</p>

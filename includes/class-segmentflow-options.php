@@ -26,6 +26,7 @@ class Segmentflow_Options {
 		'segmentflow_write_key'          => '',
 		'segmentflow_organization_name'  => '',
 		'segmentflow_api_host'           => 'https://api.cloud.segmentflow.ai',
+		'segmentflow_app_host'           => 'https://dashboard.segmentflow.ai',
 		'segmentflow_debug_mode'         => false,
 		'segmentflow_consent_required'   => false,
 		'segmentflow_connected_platform' => '', // 'wordpress' or 'woocommerce'
@@ -84,12 +85,12 @@ class Segmentflow_Options {
 	}
 
 	/**
-	 * Get the app (dashboard) host URL, derived from the API host.
+	 * Get the app (dashboard) host URL.
 	 *
 	 * @return string
 	 */
 	public function get_app_host(): string {
-		return str_replace( 'api.', 'app.', $this->get_api_host() );
+		return (string) $this->get( 'app_host', 'https://dashboard.segmentflow.ai' );
 	}
 
 	/**
