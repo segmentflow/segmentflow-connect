@@ -9,9 +9,6 @@
  */
 
 defined( 'ABSPATH' ) || exit;
-
-// Register settings on this page load.
-Segmentflow_Admin_Settings::register();
 ?>
 
 <form method="post" action="options.php">

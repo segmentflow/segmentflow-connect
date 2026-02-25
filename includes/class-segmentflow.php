@@ -86,6 +86,9 @@ class Segmentflow {
 		$admin = new Segmentflow_Admin( $options );
 		$admin->register_hooks();
 
+		// ALWAYS: register settings on admin_init (required for options.php allowlist).
+		add_action( 'admin_init', [ 'Segmentflow_Admin_Settings', 'register' ] );
+
 		// ALWAYS: lifecycle hooks (late activation detection).
 		$lifecycle = new Segmentflow_Lifecycle();
 		$lifecycle->register_hooks();
