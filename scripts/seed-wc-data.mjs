@@ -95,8 +95,7 @@ function seedProducts() {
   log("Importing WooCommerce sample products...");
 
   // WooCommerce bundles sample data inside the plugin.
-  const csvPath =
-    "/var/www/html/wp-content/plugins/woocommerce/sample-data/sample_products.csv";
+  const csvPath = "/var/www/html/wp-content/plugins/woocommerce/sample-data/sample_products.csv";
 
   // The CSV importer is a WP-CLI command added by WooCommerce.
   // Fall back to the WordPress XML importer if the CSV command isn't available.
@@ -104,9 +103,7 @@ function seedProducts() {
     wp(`wc product_csv_importer "${csvPath}" --user=1`);
     log("Sample products imported via CSV importer.");
   } catch {
-    log(
-      "CSV importer not available, trying WordPress XML importer...",
-    );
+    log("CSV importer not available, trying WordPress XML importer...");
     try {
       wp("plugin install wordpress-importer --activate", {
         ignoreError: true,
@@ -188,10 +185,9 @@ function seedCustomers() {
 
   for (const c of CUSTOMERS) {
     // Check if customer already exists by email.
-    const existing = wp(
-      `wc customer list --email="${c.email}" --user=1 --format=ids`,
-      { ignoreError: true },
-    );
+    const existing = wp(`wc customer list --email="${c.email}" --user=1 --format=ids`, {
+      ignoreError: true,
+    });
 
     if (existing) {
       const id = existing.split(" ")[0];
@@ -384,9 +380,7 @@ function seedOrders(customerIds) {
       phone: customer.phone,
     });
 
-    const customerId = isGuest
-      ? "0"
-      : (customerIds.get(order.customerEmail) || "0");
+    const customerId = isGuest ? "0" : customerIds.get(order.customerEmail) || "0";
 
     const lineItemsJson = JSON.stringify(lineItems);
 
@@ -398,17 +392,11 @@ function seedOrders(customerIds) {
 
       const id = output.match(/\d+/)?.[0];
       if (id) {
-        const label = isGuest
-          ? `guest (${customer.email})`
-          : customer.email;
-        log(
-          `  Created order #${id} for ${label} (status: ${order.status}).`,
-        );
+        const label = isGuest ? `guest (${customer.email})` : customer.email;
+        log(`  Created order #${id} for ${label} (status: ${order.status}).`);
       }
     } catch {
-      log(
-        `  WARNING: Failed to create order for ${order.customerEmail}.`,
-      );
+      log(`  WARNING: Failed to create order for ${order.customerEmail}.`);
     }
   }
 }
@@ -445,14 +433,67 @@ function seedPaymentGateways() {
     accounts: [],
   });
 
-  wp(
-    `option update woocommerce_bacs_settings '${bacsSettings}' --format=json`,
-    { ignoreError: true },
-  );
+  wp(`option update woocommerce_bacs_settings '${bacsSettings}' --format=json`, {
+    ignoreError: true,
+  });
   log("  Enabled: Direct Bank Transfer (BACS).");
 
   // Flush the payment gateway transients so WC picks up the changes.
   wp("transient delete wc_payment_gateways", { ignoreError: true });
+}
+
+// ============================================================================
+// Seed: Classic Checkout & Cart Pages (for testing shortcode-based checkout)
+// ============================================================================
+
+function seedClassicCheckoutPage() {
+  log("Ensuring classic checkout page exists...");
+
+  const existing = wp("post list --post_type=page --name=classic-checkout --format=ids", {
+    ignoreError: true,
+  });
+
+  if (existing) {
+    log("  Classic checkout page already exists. Skipping.");
+    return;
+  }
+
+  const id = wp(
+    'post create --post_type=page --post_title="Classic Checkout" --post_name="classic-checkout" --post_status=publish --post_content="[woocommerce_checkout]" --porcelain',
+    { ignoreError: true },
+  );
+
+  if (id) {
+    log(`  Created classic checkout page (ID: ${id}).`);
+    log("  Access at: /classic-checkout/");
+  } else {
+    log("  WARNING: Could not create classic checkout page.");
+  }
+}
+
+function seedClassicCartPage() {
+  log("Ensuring classic cart page exists...");
+
+  const existing = wp("post list --post_type=page --name=classic-cart --format=ids", {
+    ignoreError: true,
+  });
+
+  if (existing) {
+    log("  Classic cart page already exists. Skipping.");
+    return;
+  }
+
+  const id = wp(
+    'post create --post_type=page --post_title="Classic Cart" --post_name="classic-cart" --post_status=publish --post_content="[woocommerce_cart]" --porcelain',
+    { ignoreError: true },
+  );
+
+  if (id) {
+    log(`  Created classic cart page (ID: ${id}).`);
+    log("  Access at: /classic-cart/");
+  } else {
+    log("  WARNING: Could not create classic cart page.");
+  }
 }
 
 // ============================================================================
@@ -466,6 +507,8 @@ function main() {
 
   seedPermalinks();
   seedWooCommercePages();
+  seedClassicCheckoutPage();
+  seedClassicCartPage();
   seedPaymentGateways();
   seedProducts();
   const customerIds = seedCustomers();

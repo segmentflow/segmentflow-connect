@@ -23,6 +23,8 @@
     "env:logs": "npx @wordpress/env logs",
     "env:cli": "npx @wordpress/env run cli",
     "env:seed": "node scripts/seed-wc-data.mjs",
+    "env:classic-checkout": "npx @wordpress/env run cli -- wp option update woocommerce_checkout_page_id $(npx @wordpress/env run cli -- wp post list --post_type=page --name=classic-checkout --format=ids --quiet) && npx @wordpress/env run cli -- wp option update woocommerce_cart_page_id $(npx @wordpress/env run cli -- wp post list --post_type=page --name=classic-cart --format=ids --quiet) && echo 'Switched to classic checkout'",
+    "env:blocks-checkout": "npx @wordpress/env run cli -- wp option update woocommerce_checkout_page_id $(npx @wordpress/env run cli -- wp post list --post_type=page --name=checkout --format=ids --quiet) && npx @wordpress/env run cli -- wp option update woocommerce_cart_page_id $(npx @wordpress/env run cli -- wp post list --post_type=page --name=cart --format=ids --quiet) && echo 'Switched to Blocks checkout'",
     "env:test": "npx @wordpress/env run tests-cli --env-cwd=wp-content/plugins/segmentflow-connect vendor/bin/phpunit",
     "prepare": "husky",
     "changeset": "changeset",

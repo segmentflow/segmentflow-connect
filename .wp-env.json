@@ -2,7 +2,8 @@
   "plugins": [
     ".",
     "https://downloads.wordpress.org/plugin/woocommerce.zip",
-    "https://downloads.wordpress.org/plugin/wp-mail-logging.zip"
+    "https://downloads.wordpress.org/plugin/wp-mail-logging.zip",
+    "https://downloads.wordpress.org/plugin/contact-form-7.zip"
   ],
   "testsEnvironment": false,
   "lifecycleScripts": {
