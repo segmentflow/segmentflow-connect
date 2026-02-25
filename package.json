@@ -22,6 +22,7 @@
     "env:destroy": "npx @wordpress/env destroy",
     "env:logs": "npx @wordpress/env logs",
     "env:cli": "npx @wordpress/env run cli",
+    "env:seed": "node scripts/seed-wc-data.mjs",
     "env:test": "npx @wordpress/env run tests-cli --env-cwd=wp-content/plugins/segmentflow-connect vendor/bin/phpunit",
     "prepare": "husky",
     "changeset": "changeset",
