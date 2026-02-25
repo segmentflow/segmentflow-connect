@@ -109,17 +109,18 @@ class Segmentflow_WC_Helper {
 		}
 
 		$items = [];
-		foreach ( $cart->get_cart() as $item ) {
+		foreach ( $cart->get_cart() as $cart_item_key => $item ) {
 			$product = $item['data'];
 			$items[] = [
-				'product_id'   => $item['product_id'],
-				'variation_id' => $item['variation_id'] ?? 0,
-				'name'         => $product->get_name(),
-				'quantity'     => $item['quantity'],
-				'price'        => $product->get_price(),
-				'sku'          => $product->get_sku(),
-				'image_url'    => wp_get_attachment_url( $product->get_image_id() ) ? wp_get_attachment_url( $product->get_image_id() ) : '',
-				'url'          => $product->get_permalink(),
+				'cart_item_key' => $cart_item_key,
+				'product_id'    => $item['product_id'],
+				'variation_id'  => $item['variation_id'] ?? 0,
+				'name'          => $product->get_name(),
+				'quantity'      => $item['quantity'],
+				'price'         => $product->get_price(),
+				'sku'           => $product->get_sku(),
+				'image_url'     => wp_get_attachment_url( $product->get_image_id() ) ? wp_get_attachment_url( $product->get_image_id() ) : '',
+				'url'           => $product->get_permalink(),
 			];
 		}
 

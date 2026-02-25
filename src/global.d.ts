@@ -36,6 +36,7 @@ interface SfWcPageData {
   };
   cart?: {
     items: Array<{
+      cart_item_key?: string;
       product_id: number;
       variation_id: number;
       name: string;
