@@ -7,7 +7,7 @@
  * - Disconnect confirmation and AJAX call
  *
  * Loaded via wp_enqueue_script() on the Segmentflow settings page.
- * Compiled to IIFE bundle by tsdown, available as window.SegmentflowAdmin.
+ * Compiled to IIFE bundle by tsdown.
  *
  * @package Segmentflow_Connect
  */

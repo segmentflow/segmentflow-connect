@@ -48,6 +48,7 @@ class Segmentflow_Tracking {
 		}
 
 		add_action( 'wp_head', [ $this, 'inject_sdk' ], 1 );
+		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_storefront_assets' ] );
 	}
 
 	/**
@@ -154,5 +155,35 @@ class Segmentflow_Tracking {
 		})();
 		</script>
 		<?php
+	}
+
+	/**
+	 * Enqueue the storefront form-tracking script.
+	 *
+	 * Loads storefront.js on all frontend pages. The script listens for
+	 * Contact Form 7 and Elementor Pro form submission events and forwards
+	 * them to the SDK via window.segmentflow.track().
+	 */
+	public function enqueue_storefront_assets(): void {
+		$write_key = $this->options->get_write_key();
+		if ( empty( $write_key ) ) {
+			return;
+		}
+
+		$script_path = SEGMENTFLOW_PATH . 'assets/js/storefront.iife.js';
+		if ( ! file_exists( $script_path ) ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'segmentflow-storefront',
+			SEGMENTFLOW_URL . 'assets/js/storefront.iife.js',
+			[],
+			(string) filemtime( $script_path ),
+			[
+				'in_footer' => true,
+				'strategy'  => 'defer',
+			]
+		);
 	}
 }

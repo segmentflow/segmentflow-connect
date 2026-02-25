@@ -77,4 +77,102 @@ class Segmentflow_WC_Helper {
 		}
 		return \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
 	}
+
+	/**
+	 * Extract product data for tracking.
+	 *
+	 * @param WC_Product $product The product object.
+	 * @return array<string, mixed> Product data array.
+	 */
+	public static function get_product_data( WC_Product $product ): array {
+		return [
+			'id'         => $product->get_id(),
+			'name'       => $product->get_name(),
+			'price'      => $product->get_price(),
+			'sku'        => $product->get_sku(),
+			'categories' => wp_get_post_terms( $product->get_id(), 'product_cat', [ 'fields' => 'names' ] ),
+			'image_url'  => wp_get_attachment_url( $product->get_image_id() ) ? wp_get_attachment_url( $product->get_image_id() ) : '',
+			'url'        => $product->get_permalink(),
+			'type'       => $product->get_type(),
+		];
+	}
+
+	/**
+	 * Extract cart data for tracking.
+	 *
+	 * @return array<string, mixed>|null Cart data array, or null if cart is empty.
+	 */
+	public static function get_cart_data(): ?array {
+		$cart = WC()->cart;
+		if ( ! $cart || $cart->is_empty() ) {
+			return null;
+		}
+
+		$items = [];
+		foreach ( $cart->get_cart() as $item ) {
+			$product = $item['data'];
+			$items[] = [
+				'product_id'   => $item['product_id'],
+				'variation_id' => $item['variation_id'] ?? 0,
+				'name'         => $product->get_name(),
+				'quantity'     => $item['quantity'],
+				'price'        => $product->get_price(),
+				'sku'          => $product->get_sku(),
+				'image_url'    => wp_get_attachment_url( $product->get_image_id() ) ? wp_get_attachment_url( $product->get_image_id() ) : '',
+				'url'          => $product->get_permalink(),
+			];
+		}
+
+		return [
+			'items'      => $items,
+			'total'      => $cart->get_total( 'raw' ),
+			'subtotal'   => $cart->get_subtotal(),
+			'item_count' => $cart->get_cart_contents_count(),
+			'cart_hash'  => $cart->get_cart_hash(),
+		];
+	}
+
+	/**
+	 * Extract order data for tracking.
+	 *
+	 * Sets the `_sf_order_tracked` meta flag on first access to prevent
+	 * duplicate client-side order_completed events on page refresh.
+	 *
+	 * @param WC_Order $order The order object.
+	 * @return array<string, mixed> Order data array.
+	 */
+	public static function get_order_data( WC_Order $order ): array {
+		$already_tracked = (bool) $order->get_meta( '_sf_order_tracked' );
+		if ( ! $already_tracked ) {
+			$order->update_meta_data( '_sf_order_tracked', '1' );
+			$order->save();
+		}
+
+		$items = [];
+		foreach ( $order->get_items() as $item ) {
+			$product = $item->get_product();
+			$items[] = [
+				'product_id' => $item->get_product_id(),
+				'name'       => $item->get_name(),
+				'quantity'   => $item->get_quantity(),
+				'price'      => $order->get_item_total( $item, false, true ),
+				'sku'        => $product ? $product->get_sku() : '',
+			];
+		}
+
+		return [
+			'id'              => $order->get_id(),
+			'number'          => $order->get_order_number(),
+			'total'           => $order->get_total(),
+			'subtotal'        => $order->get_subtotal(),
+			'tax'             => $order->get_total_tax(),
+			'shipping'        => $order->get_shipping_total(),
+			'discount'        => $order->get_total_discount(),
+			'payment_method'  => $order->get_payment_method_title(),
+			'currency'        => $order->get_currency(),
+			'items'           => $items,
+			'coupon_codes'    => $order->get_coupon_codes(),
+			'already_tracked' => $already_tracked,
+		];
+	}
 }
