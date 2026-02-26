@@ -1,0 +1,57 @@
+# Version control
+.git
+.gitignore
+
+# CI / tooling config
+.github
+.husky
+.agents
+.claude
+.changeset
+.opencode
+.editorconfig
+.lintstagedrc.json
+.nvmrc
+.prettierrc
+.wp-env.json
+.distignore
+
+# Build tooling (JS source + config)
+src
+node_modules
+package.json
+pnpm-lock.yaml
+tsconfig.json
+tsdown.config.ts
+eslint.config.mjs
+
+# PHP dev tooling
+vendor
+composer.json
+composer.lock
+phpcs.xml.dist
+phpunit.xml.dist
+
+# Tests and dev scripts
+tests
+bin
+scripts
+
+# Documentation
+docs
+
+# WordPress.org assets (deployed separately via ASSETS_DIR)
+.wordpress-org
+
+# IDE
+.idea
+.vscode
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.zip
+.phpunit.result.cache
+skills-lock.json
