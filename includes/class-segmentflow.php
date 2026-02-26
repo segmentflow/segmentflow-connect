@@ -42,6 +42,7 @@ class Segmentflow {
 		// ALWAYS: core classes.
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-helper.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-options.php';
+		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-identity-cookie.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-tracking.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-auth.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-api.php';
@@ -73,6 +74,12 @@ class Segmentflow {
 	 */
 	private function init_classes(): void {
 		$options = new Segmentflow_Options();
+
+		// ALWAYS: ensure identity cookie exists (server-set, immune to Safari ITP).
+		// Priority 1 on `init` so the cookie is available for all subsequent hooks.
+		if ( ! is_admin() ) {
+			add_action( 'init', [ 'Segmentflow_Identity_Cookie', 'ensure_anonymous_id' ], 1 );
+		}
 
 		// ALWAYS: core tracking (works on any WordPress site).
 		$tracking = new Segmentflow_Tracking( $options );

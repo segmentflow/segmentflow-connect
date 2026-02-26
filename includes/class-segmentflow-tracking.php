@@ -74,10 +74,6 @@ class Segmentflow_Tracking {
 		$debug_mode       = $this->options->is_debug_mode();
 		$consent_required = $this->options->is_consent_required();
 
-		// WordPress user context (available on ANY WordPress site).
-		$user_id    = is_user_logged_in() ? get_current_user_id() : null;
-		$user_email = is_user_logged_in() ? wp_get_current_user()->user_email : null;
-
 		/**
 		 * Filter the tracking context.
 		 *
@@ -94,6 +90,33 @@ class Segmentflow_Tracking {
 		if ( $has_extra && ! empty( $extra_context['platform'] ) && 'woocommerce' === $extra_context['platform'] ) {
 			$prefix = 'wc_';
 		}
+
+		// Read identity from the unified sf_id cookie (set server-side on init).
+		$sf_identity = Segmentflow_Identity_Cookie::read();
+
+		// User identity: prefer cookie, fall back to WordPress session.
+		$user_id    = null;
+		$user_email = null;
+
+		if ( is_user_logged_in() ) {
+			$user_id    = $prefix . get_current_user_id();
+			$user_email = wp_get_current_user()->user_email;
+
+			// Enrich the cookie with the logged-in user's identity.
+			Segmentflow_Identity_Cookie::write(
+				[
+					'u' => $user_id,
+					'e' => $user_email,
+				]
+			);
+		} elseif ( $sf_identity ) {
+			// Anonymous or previously-identified visitor.
+			$user_id    = $sf_identity['u'] ?? null;
+			$user_email = $sf_identity['e'] ?? null;
+		}
+
+		// Anonymous ID is always available (ensure_anonymous_id ran on init).
+		$anonymous_id = $sf_identity['a'] ?? null;
 
 		// Security: all PHP values injected into JavaScript below use wp_json_encode(),
 		// which produces valid JSON literals and escapes characters that could break
@@ -114,6 +137,7 @@ class Segmentflow_Tracking {
 				siteUrl: <?php echo wp_json_encode( home_url() ); ?>,
 				userId: <?php echo wp_json_encode( $user_id ); ?>,
 				userEmail: <?php echo wp_json_encode( $user_email ); ?>,
+				anonymousId: <?php echo wp_json_encode( $anonymous_id ); ?>,
 				locale: <?php echo wp_json_encode( get_locale() ); ?>
 			};
 
@@ -135,7 +159,10 @@ class Segmentflow_Tracking {
 				// On thankyou page: webhook-based identity handles this via appendIdentitySignal().
 				// Skipping PHP identify to prevent overwriting the billing email with the WP user email.
 				<?php else : ?>
-				var traits = { email: wpContext.userEmail };
+				var traits = {};
+				if (wpContext.userEmail) {
+					traits.email = wpContext.userEmail;
+				}
 					<?php if ( $has_extra ) : ?>
 				if (typeof integrationContext !== 'undefined' && integrationContext.traits) {
 					Object.assign(traits, integrationContext.traits);
@@ -143,7 +170,7 @@ class Segmentflow_Tracking {
 				<?php endif; ?>
 
 				var identifyParams = {
-					userId: <?php echo wp_json_encode( $prefix ); ?> + wpContext.userId,
+					userId: wpContext.userId,
 					traits: traits
 				};
 
