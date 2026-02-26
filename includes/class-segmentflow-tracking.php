@@ -117,9 +117,10 @@ class Segmentflow_Tracking {
 				locale: <?php echo wp_json_encode( get_locale() ); ?>
 			};
 
-			<?php if ( $has_extra ) : ?>
-			var integrationContext = <?php echo wp_json_encode( $extra_context ); ?>;
-			<?php endif; ?>
+		<?php if ( $has_extra ) : ?>
+		var integrationContext = <?php echo wp_json_encode( $extra_context ); ?>;
+		window.__segmentflow_integration_context = integrationContext;
+		<?php endif; ?>
 
 			var script = document.createElement('script');
 			script.src = 'https://cdn.cloud.segmentflow.ai/sdk.js';
