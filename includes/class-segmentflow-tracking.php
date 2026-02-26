@@ -130,27 +130,32 @@ class Segmentflow_Tracking {
 
 				window.segmentflow.init(config);
 
-				if (wpContext.userId) {
-					var traits = { email: wpContext.userEmail };
+			if (wpContext.userId) {
+				<?php if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-received' ) ) : ?>
+				// On thankyou page: webhook-based identity handles this via appendIdentitySignal().
+				// Skipping PHP identify to prevent overwriting the billing email with the WP user email.
+				<?php else : ?>
+				var traits = { email: wpContext.userEmail };
 					<?php if ( $has_extra ) : ?>
-					if (typeof integrationContext !== 'undefined' && integrationContext.traits) {
-						Object.assign(traits, integrationContext.traits);
-					}
-					<?php endif; ?>
-
-					var identifyParams = {
-						userId: <?php echo wp_json_encode( $prefix ); ?> + wpContext.userId,
-						traits: traits
-					};
-
-					<?php if ( $has_extra ) : ?>
-					if (typeof integrationContext !== 'undefined' && integrationContext.context) {
-						identifyParams.context = integrationContext.context;
-					}
-					<?php endif; ?>
-
-					window.segmentflow.identify(identifyParams);
+				if (typeof integrationContext !== 'undefined' && integrationContext.traits) {
+					Object.assign(traits, integrationContext.traits);
 				}
+				<?php endif; ?>
+
+				var identifyParams = {
+					userId: <?php echo wp_json_encode( $prefix ); ?> + wpContext.userId,
+					traits: traits
+				};
+
+					<?php if ( $has_extra ) : ?>
+				if (typeof integrationContext !== 'undefined' && integrationContext.context) {
+					identifyParams.context = integrationContext.context;
+				}
+				<?php endif; ?>
+
+				window.segmentflow.identify(identifyParams);
+				<?php endif; ?>
+			}
 			};
 			document.head.appendChild(script);
 		})();

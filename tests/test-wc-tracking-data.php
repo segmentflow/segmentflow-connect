@@ -173,7 +173,6 @@ class Test_WC_Tracking_Data extends WP_UnitTestCase {
 		$this->assertArrayHasKey( 'currency', $data );
 		$this->assertArrayHasKey( 'items', $data );
 		$this->assertArrayHasKey( 'coupon_codes', $data );
-		$this->assertArrayHasKey( 'already_tracked', $data );
 
 		$this->assertEquals( $order->get_id(), $data['id'] );
 		$this->assertEquals( 'USD', $data['currency'] );
@@ -191,29 +190,6 @@ class Test_WC_Tracking_Data extends WP_UnitTestCase {
 
 		$order->delete( true );
 		$product->delete( true );
-	}
-
-	/**
-	 * Test the already_tracked deduplication flag.
-	 *
-	 * First call should return already_tracked: false and set the meta.
-	 * Second call should return already_tracked: true.
-	 */
-	public function test_get_order_data_dedup_flag(): void {
-		$order = wc_create_order();
-		$order->save();
-
-		// First call: not yet tracked.
-		$data_first = Segmentflow_WC_Helper::get_order_data( $order );
-		$this->assertFalse( $data_first['already_tracked'] );
-
-		// Second call: should now be marked as tracked.
-		// Re-read the order to pick up the saved meta.
-		$order       = wc_get_order( $order->get_id() );
-		$data_second = Segmentflow_WC_Helper::get_order_data( $order );
-		$this->assertTrue( $data_second['already_tracked'] );
-
-		$order->delete( true );
 	}
 
 	/**

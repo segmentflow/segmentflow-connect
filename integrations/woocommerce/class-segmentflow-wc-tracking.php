@@ -123,17 +123,10 @@ class Segmentflow_WC_Tracking {
 			}
 		}
 
-		if ( 'thankyou' === $page_type ) {
-			$order_data = $this->get_order_data();
-			if ( $order_data ) {
-				$data['order'] = $order_data;
-			}
-		}
-
-		printf(
-			'<script>window.__sf_wc = %s;</script>' . "\n",
-			wp_json_encode( $data )
-		);
+			printf(
+				'<script>window.__sf_wc = %s;</script>' . "\n",
+				wp_json_encode( $data )
+			);
 	}
 
 	/**
@@ -175,21 +168,5 @@ class Segmentflow_WC_Tracking {
 		}
 
 		return Segmentflow_WC_Helper::get_product_data( $product );
-	}
-
-	/**
-	 * Get order data for the current thank-you page.
-	 *
-	 * @return array<string, mixed>|null Order data, or null if order not found.
-	 */
-	private function get_order_data(): ?array {
-		global $wp;
-		$order_id = absint( $wp->query_vars['order-received'] ?? 0 );
-		$order    = wc_get_order( $order_id );
-		if ( ! $order ) {
-			return null;
-		}
-
-		return Segmentflow_WC_Helper::get_order_data( $order );
 	}
 }

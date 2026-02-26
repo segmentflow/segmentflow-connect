@@ -136,19 +136,14 @@ class Segmentflow_WC_Helper {
 	/**
 	 * Extract order data for tracking.
 	 *
-	 * Sets the `_sf_order_tracked` meta flag on first access to prevent
-	 * duplicate client-side order_completed events on page refresh.
+	 * Order lifecycle events (order_completed, order_paid, etc.) are handled
+	 * server-side by WooCommerce webhooks with Redis-based deduplication.
+	 * This method provides order data for any remaining client-side needs.
 	 *
 	 * @param WC_Order $order The order object.
 	 * @return array<string, mixed> Order data array.
 	 */
 	public static function get_order_data( WC_Order $order ): array {
-		$already_tracked = (bool) $order->get_meta( '_sf_order_tracked' );
-		if ( ! $already_tracked ) {
-			$order->update_meta_data( '_sf_order_tracked', '1' );
-			$order->save();
-		}
-
 		$items = [];
 		foreach ( $order->get_items() as $item ) {
 			$product = $item->get_product();
@@ -162,18 +157,18 @@ class Segmentflow_WC_Helper {
 		}
 
 		return [
-			'id'              => $order->get_id(),
-			'number'          => $order->get_order_number(),
-			'total'           => $order->get_total(),
-			'subtotal'        => $order->get_subtotal(),
-			'tax'             => $order->get_total_tax(),
-			'shipping'        => $order->get_shipping_total(),
-			'discount'        => $order->get_total_discount(),
-			'payment_method'  => $order->get_payment_method_title(),
-			'currency'        => $order->get_currency(),
-			'items'           => $items,
-			'coupon_codes'    => $order->get_coupon_codes(),
-			'already_tracked' => $already_tracked,
+			'id'             => $order->get_id(),
+			'number'         => $order->get_order_number(),
+			'total'          => $order->get_total(),
+			'subtotal'       => $order->get_subtotal(),
+			'tax'            => $order->get_total_tax(),
+			'shipping'       => $order->get_shipping_total(),
+			'discount'       => $order->get_total_discount(),
+			'payment_method' => $order->get_payment_method_title(),
+			'currency'       => $order->get_currency(),
+			'billing_email'  => $order->get_billing_email(),
+			'items'          => $items,
+			'coupon_codes'   => $order->get_coupon_codes(),
 		];
 	}
 }

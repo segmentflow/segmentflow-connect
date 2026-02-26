@@ -89,14 +89,18 @@ class Segmentflow_API {
 	/**
 	 * Make an HTTP request to the Segmentflow API.
 	 *
-	 * @param string               $method   HTTP method (GET, POST, DELETE).
-	 * @param string               $endpoint API endpoint path (e.g., '/api/v1/integrations/connect/status').
-	 * @param array<string, mixed> $body     Request body (for POST/PUT).
-	 * @param array<string, string>$headers  Additional headers.
+	 * @param string                $method   HTTP method (GET, POST, DELETE).
+	 * @param string                $endpoint API endpoint path (e.g., '/api/v1/integrations/connect/status').
+	 * @param array<string, mixed>  $body     Request body (for POST/PUT).
+	 * @param array<string, string> $headers  Additional headers.
+	 * @param array<string, mixed>  $options  Request options. Supports:
+	 *                                        - 'blocking' (bool): If false, fire-and-forget (default: true).
 	 * @return array{success: bool, data?: array<string, mixed>, error?: string}
 	 */
-	public function request( string $method, string $endpoint, array $body = [], array $headers = [] ): array {
+	public function request( string $method, string $endpoint, array $body = [], array $headers = [], array $options = [] ): array {
 		$url = $this->options->get_api_host() . $endpoint;
+
+		$is_blocking = $options['blocking'] ?? true;
 
 		$default_headers = [
 			'Content-Type' => 'application/json',
@@ -105,9 +109,10 @@ class Segmentflow_API {
 		];
 
 		$args = [
-			'method'  => strtoupper( $method ),
-			'headers' => array_merge( $default_headers, $headers ),
-			'timeout' => 15,
+			'method'   => strtoupper( $method ),
+			'headers'  => array_merge( $default_headers, $headers ),
+			'timeout'  => $is_blocking ? 15 : 0.5,
+			'blocking' => $is_blocking,
 		];
 
 		if ( ! empty( $body ) && in_array( $method, [ 'POST', 'PUT', 'PATCH' ], true ) ) {
@@ -115,6 +120,13 @@ class Segmentflow_API {
 		}
 
 		$response = wp_remote_request( $url, $args );
+
+		// Non-blocking requests return immediately; no response to parse.
+		if ( ! $is_blocking ) {
+			return [
+				'success' => ! is_wp_error( $response ),
+			];
+		}
 
 		if ( is_wp_error( $response ) ) {
 			return [

@@ -61,6 +61,7 @@ interface SfWcPageData {
     discount: string;
     payment_method: string;
     currency: string;
+    billing_email?: string;
     items: Array<{
       product_id: number;
       name: string;
