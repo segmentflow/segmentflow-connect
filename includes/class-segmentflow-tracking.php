@@ -160,9 +160,11 @@ class Segmentflow_Tracking {
 				// Skipping PHP identify to prevent overwriting the billing email with the WP user email.
 				<?php else : ?>
 				var traits = {};
+					<?php if ( ! ( function_exists( 'is_checkout' ) && is_checkout() ) ) : ?>
 				if (wpContext.userEmail) {
 					traits.email = wpContext.userEmail;
 				}
+				<?php endif; ?>
 					<?php if ( $has_extra ) : ?>
 				if (typeof integrationContext !== 'undefined' && integrationContext.traits) {
 					Object.assign(traits, integrationContext.traits);
