@@ -122,7 +122,8 @@ class Segmentflow_Identity_Cookie {
 
 		$secure = is_ssl();
 
-		setcookie(
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- setcookie() may fail in test/CLI contexts where headers are already sent. The $_COOKIE superglobal update below ensures the value is still available for the current request.
+		@setcookie(
 			self::COOKIE_NAME,
 			$encoded,
 			[

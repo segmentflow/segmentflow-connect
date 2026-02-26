@@ -46,6 +46,7 @@ class Segmentflow {
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-tracking.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-auth.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-api.php';
+		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-server-events.php';
 
 		// ALWAYS: admin classes.
 		require_once SEGMENTFLOW_PATH . 'admin/class-segmentflow-admin.php';
@@ -56,6 +57,7 @@ class Segmentflow {
 			require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-tracking.php';
 			require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-auth.php';
 			require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-helper.php';
+			require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-server-events.php';
 		}
 
 		// FUTURE: Contact Form 7
@@ -100,6 +102,11 @@ class Segmentflow {
 		$lifecycle = new Segmentflow_Lifecycle();
 		$lifecycle->register_hooks();
 
+		// ALWAYS: server-side identity and form events (fire-and-forget to ingest API).
+		$api           = new Segmentflow_API( $options );
+		$server_events = new Segmentflow_Server_Events( $options, $api );
+		$server_events->register_hooks();
+
 		// CONDITIONAL: WooCommerce enrichment.
 		if ( Segmentflow_Helper::is_woocommerce_active() ) {
 			$wc_tracking = new Segmentflow_WC_Tracking( $options, $tracking );
@@ -107,6 +114,10 @@ class Segmentflow {
 
 			$wc_auth = new Segmentflow_WC_Auth( $options );
 			$wc_auth->register_hooks();
+
+			// Server-side cart and checkout events (shares API instance).
+			$wc_server_events = new Segmentflow_WC_Server_Events( $options, $api );
+			$wc_server_events->register_hooks();
 		}
 	}
 }

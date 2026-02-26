@@ -8,6 +8,7 @@
     <testsuites>
         <testsuite name="Segmentflow Connect">
             <directory suffix=".php">tests/</directory>
+            <exclude>tests/helpers/</exclude>
         </testsuite>
     </testsuites>
     <coverage>
