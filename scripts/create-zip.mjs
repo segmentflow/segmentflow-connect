@@ -16,14 +16,19 @@
  */
 
 import { execSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 
-const zipName = "segmentflow-connect.zip";
+// Read version from the main plugin file.
+const pluginFile = readFileSync(join(rootDir, "segmentflow-connect.php"), "utf8");
+const versionMatch = pluginFile.match(/^\s*\*\s*Version:\s*([^\s/]+)/m);
+const version = versionMatch ? versionMatch[1] : "0.0.0";
+
+const zipName = `segmentflow-connect-${version}.zip`;
 
 // Files and directories to include in the zip.
 const includes = [
