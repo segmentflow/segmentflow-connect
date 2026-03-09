@@ -25,7 +25,7 @@ class Segmentflow_Options {
 	private const DEFAULTS = [
 		'segmentflow_write_key'          => '',
 		'segmentflow_organization_name'  => '',
-		'segmentflow_api_host'           => 'https://api.cloud.segmentflow.ai',
+		'segmentflow_api_host'           => 'https://api.segmentflow.ai',
 		'segmentflow_app_host'           => 'https://dashboard.segmentflow.ai',
 		'segmentflow_debug_mode'         => false,
 		'segmentflow_consent_required'   => false,
@@ -83,7 +83,7 @@ class Segmentflow_Options {
 	 * @return string
 	 */
 	public function get_api_host(): string {
-		return (string) $this->get( 'api_host', 'https://api.cloud.segmentflow.ai' );
+		return (string) $this->get( 'api_host', 'https://api.segmentflow.ai' );
 	}
 
 	/**

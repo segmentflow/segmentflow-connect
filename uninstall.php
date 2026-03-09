@@ -14,7 +14,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 }
 
 // Read values needed for API notification BEFORE deleting options.
-$segmentflow_api_host  = get_option( 'segmentflow_api_host', 'https://api.cloud.segmentflow.ai' );
+$segmentflow_api_host  = get_option( 'segmentflow_api_host', 'https://api.segmentflow.ai' );
 $segmentflow_write_key = get_option( 'segmentflow_write_key', '' );
 
 // Load the options class for cleanup.

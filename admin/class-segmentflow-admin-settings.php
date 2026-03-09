@@ -84,7 +84,7 @@ class Segmentflow_Admin_Settings {
 			[
 				'type'              => 'string',
 				'sanitize_callback' => 'esc_url_raw',
-				'default'           => 'https://api.cloud.segmentflow.ai',
+				'default'           => 'https://api.segmentflow.ai',
 			]
 		);
 
