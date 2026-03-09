@@ -52,8 +52,12 @@ class Segmentflow_WC_Tracking {
 		// Enrich SDK context with WooCommerce data.
 		add_filter( 'segmentflow_tracking_context', [ $this, 'add_woocommerce_context' ] );
 
-		// Inject window.__sf_wc page data before the SDK loads (priority 0 < SDK priority 1).
-		add_action( 'wp_head', [ $this, 'inject_page_data' ], 0 );
+		// Inject window.__sf_wc page data before the SDK initializes.
+		// Runs during wp_enqueue_scripts at priority 6, after enqueue_sdk() at
+		// priority 5, so wp_script_is() can confirm the SDK handle is registered.
+		// wp_add_inline_script( ..., 'before' ) ensures the global is set before
+		// the SDK's inline init script runs.
+		add_action( 'wp_enqueue_scripts', [ $this, 'inject_page_data' ], 6 );
 	}
 
 	/**
@@ -92,13 +96,24 @@ class Segmentflow_WC_Tracking {
 	/**
 	 * Inject WooCommerce page data into window.__sf_wc.
 	 *
-	 * Renders a <script> tag at wp_head priority 0 (before the SDK at priority 1)
-	 * containing structured page data that the SDK's WooCommercePlugin reads
-	 * to fire track events.
+	 * Uses wp_add_inline_script() with position 'before' on the SDK handle so
+	 * the window.__sf_wc global is set before the SDK's inline init script runs.
+	 * Hooked to wp_enqueue_scripts at priority 5, after the SDK is enqueued at
+	 * the default priority (10) via enqueue_sdk().
+	 *
+	 * Note: wp_add_inline_script() can be called any time before wp_head fires,
+	 * even if the handle was enqueued at a later hook priority, because WordPress
+	 * collects all inline scripts and outputs them alongside the registered handle.
 	 */
 	public function inject_page_data(): void {
 		// Only inject on the frontend.
 		if ( is_admin() ) {
+			return;
+		}
+
+		// Only attach if the SDK handle is going to be enqueued (i.e. connected).
+		if ( ! wp_script_is( Segmentflow_Tracking::SDK_HANDLE, 'enqueued' ) &&
+			! wp_script_is( Segmentflow_Tracking::SDK_HANDLE, 'registered' ) ) {
 			return;
 		}
 
@@ -123,10 +138,10 @@ class Segmentflow_WC_Tracking {
 			}
 		}
 
-			printf(
-				'<script>window.__sf_wc = %s;</script>' . "\n",
-				wp_json_encode( $data )
-			);
+		// Security: wp_json_encode() safely encodes PHP values for JS injection.
+		$inline_js = 'window.__sf_wc = ' . wp_json_encode( $data ) . ';';
+
+		wp_add_inline_script( Segmentflow_Tracking::SDK_HANDLE, $inline_js, 'before' );
 	}
 
 	/**

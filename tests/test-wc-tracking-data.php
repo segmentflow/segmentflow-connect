@@ -193,34 +193,46 @@ class Test_WC_Tracking_Data extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that inject_page_data renders a script tag with valid JSON.
+	 * Test that inject_page_data attaches an inline script with valid JSON to the SDK handle.
 	 *
-	 * Uses output buffering to capture the rendered output.
-	 * On a non-WooCommerce page, it should still render with page type "other".
+	 * Enqueues the SDK first (required for wp_add_inline_script to attach),
+	 * then calls inject_page_data() and inspects the script queue.
 	 */
 	public function test_inject_page_data_renders_script(): void {
+		update_option( 'segmentflow_write_key', 'test_key_wc' );
+
 		$options     = new Segmentflow_Options();
 		$tracking    = new Segmentflow_Tracking( $options );
 		$wc_tracking = new Segmentflow_WC_Tracking( $options, $tracking );
 
-		ob_start();
+		// Enqueue the SDK handle first so wp_script_is() returns true.
+		$tracking->enqueue_sdk();
+
+		// Inject page data -- attaches inline script to the SDK handle.
 		$wc_tracking->inject_page_data();
-		$output = ob_get_clean();
 
-		$this->assertStringContainsString( '<script>window.__sf_wc = ', $output );
-		$this->assertStringContainsString( '</script>', $output );
+		// Retrieve the 'before' inline script attached to the SDK handle.
+		$before_data = wp_scripts()->get_data( Segmentflow_Tracking::SDK_HANDLE, 'before' );
+		$inline      = is_array( $before_data ) ? implode( "\n", $before_data ) : '';
 
-		// Extract the JSON from the script tag.
+		$this->assertStringContainsString( 'window.__sf_wc = ', $inline );
+
+		// Extract and validate the JSON.
 		$json_str = preg_replace(
-			'/^<script>window\.__sf_wc = (.+?);<\/script>\s*$/',
+			'/^window\.__sf_wc = (.+?);$/',
 			'$1',
-			trim( $output )
+			trim( $inline )
 		);
 		$data     = json_decode( $json_str, true );
 
 		$this->assertIsArray( $data );
 		$this->assertArrayHasKey( 'page', $data );
 		$this->assertArrayHasKey( 'currency', $data );
+
+		// Cleanup.
+		delete_option( 'segmentflow_write_key' );
+		wp_dequeue_script( Segmentflow_Tracking::SDK_HANDLE );
+		wp_deregister_script( Segmentflow_Tracking::SDK_HANDLE );
 	}
 
 	/**

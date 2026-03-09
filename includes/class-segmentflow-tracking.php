@@ -2,7 +2,7 @@
 /**
  * Segmentflow storefront tracking.
  *
- * Injects the Segmentflow CDN SDK into the storefront via wp_head.
+ * Injects the Segmentflow CDN SDK into the storefront via wp_enqueue_scripts.
  * Works on ANY WordPress site -- page views, identify for logged-in users.
  * WooCommerce-specific context is added via the 'segmentflow_tracking_context' filter.
  *
@@ -23,6 +23,13 @@ defined( 'ABSPATH' ) || exit;
  * platform-agnostic.
  */
 class Segmentflow_Tracking {
+
+	/**
+	 * The script handle used for the Segmentflow SDK.
+	 *
+	 * @var string
+	 */
+	const SDK_HANDLE = 'segmentflow-sdk';
 
 	/**
 	 * Options instance.
@@ -47,22 +54,18 @@ class Segmentflow_Tracking {
 			return;
 		}
 
-		add_action( 'wp_head', [ $this, 'inject_sdk' ], 1 );
+		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_sdk' ], 5 );
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_storefront_assets' ] );
 	}
 
 	/**
-	 * Inject the Segmentflow SDK script into the page head.
+	 * Enqueue the Segmentflow SDK and attach the inline initialization script.
 	 *
-	 * Outputs the SDK loader script with WordPress context including:
-	 * - Write key from wp_options
-	 * - WordPress user identity (if logged in)
-	 * - Site URL and locale
-	 *
-	 * Integration-specific context (WooCommerce cart, currency, etc.) is
-	 * injected via the 'segmentflow_tracking_context' filter.
+	 * Registers the CDN SDK as an external script via wp_enqueue_script() and
+	 * attaches the initialization code via wp_add_inline_script() so WordPress
+	 * manages script loading. The inline script runs after the SDK loads.
 	 */
-	public function inject_sdk(): void {
+	public function enqueue_sdk(): void {
 		$write_key = $this->options->get_write_key();
 
 		// Don't inject if not connected.
@@ -118,78 +121,84 @@ class Segmentflow_Tracking {
 		// Anonymous ID is always available (ensure_anonymous_id ran on init).
 		$anonymous_id = $sf_identity['a'] ?? null;
 
+		// Register and enqueue the CDN SDK as an external script.
 		// Security: all PHP values injected into JavaScript below use wp_json_encode(),
 		// which produces valid JSON literals and escapes characters that could break
 		// out of a <script> context (e.g., </script>, HTML entities). This is the
 		// WordPress-recommended approach for safe PHP-to-JS data transfer.
-		?>
-		<!-- Segmentflow Connect v<?php echo esc_html( SEGMENTFLOW_VERSION ); ?> -->
-		<script>
-		(function() {
-			var config = {
-				writeKey: <?php echo wp_json_encode( $write_key ); ?>,
-				host: <?php echo wp_json_encode( $api_host ); ?>,
-			debug: <?php echo wp_json_encode( $debug_mode ); ?>,
-			consentRequired: <?php echo wp_json_encode( $consent_required ); ?>
-			};
+		wp_enqueue_script(
+			self::SDK_HANDLE,
+			'https://cdn.cloud.segmentflow.ai/sdk.js',
+			[],
+			null, // External CDN script -- no local version number.
+			[
+				'in_footer' => false,
+				'strategy'  => 'async',
+			]
+		);
 
-			var wpContext = {
-				siteUrl: <?php echo wp_json_encode( home_url() ); ?>,
-				userId: <?php echo wp_json_encode( $user_id ); ?>,
-				userEmail: <?php echo wp_json_encode( $user_email ); ?>,
-				anonymousId: <?php echo wp_json_encode( $anonymous_id ); ?>,
-				locale: <?php echo wp_json_encode( get_locale() ); ?>
-			};
+		// Build the inline initialization script.
+		// Security: all PHP values use wp_json_encode() for safe JS injection.
+		$inline_js  = '/* Segmentflow Connect v' . esc_js( SEGMENTFLOW_VERSION ) . " */\n";
+		$inline_js .= '(function() {' . "\n";
+		$inline_js .= "\tif (typeof window.segmentflow === 'undefined') return;\n\n";
 
-		<?php if ( $has_extra ) : ?>
-		var integrationContext = <?php echo wp_json_encode( $extra_context ); ?>;
-		window.__segmentflow_integration_context = integrationContext;
-		<?php endif; ?>
+		$inline_js .= "\tvar config = {\n";
+		$inline_js .= "\t\twriteKey: " . wp_json_encode( $write_key ) . ",\n";
+		$inline_js .= "\t\thost: " . wp_json_encode( $api_host ) . ",\n";
+		$inline_js .= "\t\tdebug: " . wp_json_encode( $debug_mode ) . ",\n";
+		$inline_js .= "\t\tconsentRequired: " . wp_json_encode( $consent_required ) . "\n";
+		$inline_js .= "\t};\n\n";
 
-			var script = document.createElement('script');
-			script.src = 'https://cdn.cloud.segmentflow.ai/sdk.js';
-			script.async = true;
-			script.onload = function() {
-				if (typeof window.segmentflow === 'undefined') return;
+		$inline_js .= "\tvar wpContext = {\n";
+		$inline_js .= "\t\tsiteUrl: " . wp_json_encode( home_url() ) . ",\n";
+		$inline_js .= "\t\tuserId: " . wp_json_encode( $user_id ) . ",\n";
+		$inline_js .= "\t\tuserEmail: " . wp_json_encode( $user_email ) . ",\n";
+		$inline_js .= "\t\tanonymousId: " . wp_json_encode( $anonymous_id ) . ",\n";
+		$inline_js .= "\t\tlocale: " . wp_json_encode( get_locale() ) . "\n";
+		$inline_js .= "\t};\n\n";
 
-				window.segmentflow.init(config);
+		if ( $has_extra ) {
+			$inline_js .= "\tvar integrationContext = " . wp_json_encode( $extra_context ) . ";\n";
+			$inline_js .= "\twindow.__segmentflow_integration_context = integrationContext;\n\n";
+		}
 
-			if (wpContext.userId) {
-				<?php if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-received' ) ) : ?>
-				// On thankyou page: webhook-based identity handles this via appendIdentitySignal().
-				// Skipping PHP identify to prevent overwriting the billing email with the WP user email.
-				<?php else : ?>
-				var traits = {};
-					<?php if ( ! ( function_exists( 'is_checkout' ) && is_checkout() ) ) : ?>
-				if (wpContext.userEmail) {
-					traits.email = wpContext.userEmail;
-				}
-				<?php endif; ?>
-					<?php if ( $has_extra ) : ?>
-				if (typeof integrationContext !== 'undefined' && integrationContext.traits) {
-					Object.assign(traits, integrationContext.traits);
-				}
-				<?php endif; ?>
+		$inline_js .= "\twindow.segmentflow.init(config);\n\n";
 
-				var identifyParams = {
-					userId: wpContext.userId,
-					traits: traits
-				};
+		$inline_js .= "\tif (wpContext.userId) {\n";
 
-					<?php if ( $has_extra ) : ?>
-				if (typeof integrationContext !== 'undefined' && integrationContext.context) {
-					identifyParams.context = integrationContext.context;
-				}
-				<?php endif; ?>
+		if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-received' ) ) {
+			// On thankyou page: webhook-based identity handles this via appendIdentitySignal().
+			// Skipping PHP identify to prevent overwriting the billing email with the WP user email.
+		} else {
+			$inline_js .= "\t\tvar traits = {};\n";
 
-				window.segmentflow.identify(identifyParams);
-				<?php endif; ?>
+			if ( ! ( function_exists( 'is_checkout' ) && is_checkout() ) ) {
+				$inline_js .= "\t\tif (wpContext.userEmail) { traits.email = wpContext.userEmail; }\n";
 			}
-			};
-			document.head.appendChild(script);
-		})();
-		</script>
-		<?php
+
+			if ( $has_extra ) {
+				$inline_js .= "\t\tif (typeof integrationContext !== 'undefined' && integrationContext.traits) {\n";
+				$inline_js .= "\t\t\tObject.assign(traits, integrationContext.traits);\n";
+				$inline_js .= "\t\t}\n";
+			}
+
+			$inline_js .= "\t\tvar identifyParams = { userId: wpContext.userId, traits: traits };\n";
+
+			if ( $has_extra ) {
+				$inline_js .= "\t\tif (typeof integrationContext !== 'undefined' && integrationContext.context) {\n";
+				$inline_js .= "\t\t\tidentifyParams.context = integrationContext.context;\n";
+				$inline_js .= "\t\t}\n";
+			}
+
+			$inline_js .= "\t\twindow.segmentflow.identify(identifyParams);\n";
+		}
+
+		$inline_js .= "\t}\n";
+		$inline_js .= '})();';
+
+		// Attach inline init script to run after the SDK loads.
+		wp_add_inline_script( self::SDK_HANDLE, $inline_js );
 	}
 
 	/**
@@ -213,7 +222,7 @@ class Segmentflow_Tracking {
 		wp_enqueue_script(
 			'segmentflow-storefront',
 			SEGMENTFLOW_URL . 'assets/js/storefront.iife.js',
-			[],
+			[ self::SDK_HANDLE ],
 			(string) filemtime( $script_path ),
 			[
 				'in_footer' => true,

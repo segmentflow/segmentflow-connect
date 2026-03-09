@@ -10,8 +10,13 @@ assets/js/*.js.map
 .idea/
 .vscode/
 .opencode/
+.agents/
+.claude/
 *.swp
 *.swo
+
+# Test cache
+.phpunit.result.cache
 
 # OS
 .DS_Store

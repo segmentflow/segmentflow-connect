@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Segmentflow Connect
- * Plugin URI:  https://segmentflow.ai/integrations/wordpress
+ * Plugin URI:  https://dashboard.segmentflow.ai/integrations/wordpress
  * Description: Connect your WordPress site or WooCommerce store to Segmentflow for AI-powered email marketing, customer segmentation, and revenue attribution.
  * Version:     1.0.0
  * Requires at least: 5.8

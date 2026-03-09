@@ -120,6 +120,7 @@ screen.
 
 = Links =
 
+* [GitHub Repository](https://github.com/segmentflow/segmentflow-connect)
 * [Segmentflow Terms of Service](https://segmentflow.ai/terms)
 * [Segmentflow Privacy Policy](https://segmentflow.ai/privacy)
 
