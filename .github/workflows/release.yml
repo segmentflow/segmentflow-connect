@@ -40,6 +40,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
+      - name: Sync changelog to readme.txt
+        run: node scripts/sync-changelog.mjs
+
       - name: Create plugin zip
         run: pnpm plugin:zip
 
