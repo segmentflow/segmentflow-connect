@@ -1,6 +1,6 @@
 {
   "name": "segmentflow-connect",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "private": true,
   "type": "module",
   "description": "Connect your WordPress site or WooCommerce store to Segmentflow for AI-powered email marketing.",
@@ -27,7 +27,8 @@
     "env:blocks-checkout": "npx @wordpress/env run cli -- wp option update woocommerce_checkout_page_id $(npx @wordpress/env run cli -- wp post list --post_type=page --name=checkout --format=ids --quiet) && npx @wordpress/env run cli -- wp option update woocommerce_cart_page_id $(npx @wordpress/env run cli -- wp post list --post_type=page --name=cart --format=ids --quiet) && echo 'Switched to Blocks checkout'",
     "env:test": "npx @wordpress/env run tests-cli --env-cwd=wp-content/plugins/segmentflow-connect vendor/bin/phpunit",
     "prepare": "husky",
-    "plugin:zip": "pnpm build && node scripts/create-zip.mjs"
+    "plugin:zip": "pnpm build && node scripts/create-zip.mjs",
+    "version:bump": "node scripts/bump-version.mjs"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.1",

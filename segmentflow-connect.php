@@ -24,7 +24,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Plugin constants.
  */
-define( 'SEGMENTFLOW_VERSION', '1.0.3' ); // x-release-please-version
+define( 'SEGMENTFLOW_VERSION', '1.0.3' );
 define( 'SEGMENTFLOW_PATH', plugin_dir_path( __FILE__ ) );
 define( 'SEGMENTFLOW_URL', plugin_dir_url( __FILE__ ) );
 define( 'SEGMENTFLOW_BASENAME', plugin_basename( __FILE__ ) );
