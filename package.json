@@ -27,14 +27,11 @@
     "env:blocks-checkout": "npx @wordpress/env run cli -- wp option update woocommerce_checkout_page_id $(npx @wordpress/env run cli -- wp post list --post_type=page --name=checkout --format=ids --quiet) && npx @wordpress/env run cli -- wp option update woocommerce_cart_page_id $(npx @wordpress/env run cli -- wp post list --post_type=page --name=cart --format=ids --quiet) && echo 'Switched to Blocks checkout'",
     "env:test": "npx @wordpress/env run tests-cli --env-cwd=wp-content/plugins/segmentflow-connect vendor/bin/phpunit",
     "prepare": "husky",
-    "changeset": "changeset",
-    "version": "changeset version && node scripts/bump-version.mjs",
-    "release": "pnpm build && pnpm changeset publish",
     "plugin:zip": "pnpm build && node scripts/create-zip.mjs"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.29.0",
-    "@changesets/changelog-github": "^0.5.0",
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
     "@eslint/js": "^9.18.0",
     "eslint": "^9.18.0",
     "husky": "^9.1.7",

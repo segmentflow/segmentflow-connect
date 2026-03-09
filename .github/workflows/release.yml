@@ -10,37 +10,29 @@ permissions:
 
 jobs:
   release:
-    name: Release
+    name: Release Please
     runs-on: ubuntu-24.04
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: googleapis/release-please-action@v4
+        id: release
         with:
-          fetch-depth: 0
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-          cache: "pnpm"
-      - run: pnpm install --frozen-lockfile
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
 
-      - name: Create Release PR or Publish
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          version: pnpm version
-          publish: pnpm release
-          title: "chore: version packages"
-          commit: "chore: version packages"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  deploy-wordpress:
-    name: Deploy to WordPress.org
-    runs-on: ubuntu-24.04
+  build-and-publish:
+    name: Build & Publish
     needs: release
-    if: "github.event_name == 'push' && contains(github.event.head_commit.message, 'chore: version packages')"
+    if: needs.release.outputs.release_created == 'true'
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag_name }}
+
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -49,12 +41,22 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
+      - name: Create plugin zip
+        run: pnpm plugin:zip
+
+      - name: Upload zip to GitHub Release
+        run: gh release upload "$TAG_NAME" segmentflow-connect.zip --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.release.outputs.tag_name }}
+
       # TODO: Configure WP_ORG_SVN_USERNAME and WP_ORG_SVN_PASSWORD secrets
       # once WordPress.org plugin directory credentials are available.
       - name: Deploy to WordPress.org SVN
+        if: ${{ secrets.WP_ORG_SVN_USERNAME != '' }}
         uses: 10up/action-wordpress-plugin-deploy@v2
         with:
-          generate-zip: true
+          generate-zip: false
         env:
           SVN_USERNAME: ${{ secrets.WP_ORG_SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.WP_ORG_SVN_PASSWORD }}

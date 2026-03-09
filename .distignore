@@ -7,7 +7,10 @@
 .husky
 .agents
 .claude
-.changeset
+release-please-config.json
+.release-please-manifest.json
+CHANGELOG.md
+commitlint.config.mjs
 .opencode
 .editorconfig
 .lintstagedrc.json
