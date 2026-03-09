@@ -4,7 +4,7 @@ Tags: email marketing, analytics, segmentation, woocommerce, tracking
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 8.1
-Stable tag: 1.0.1 <!-- x-release-please-version -->
+Stable tag: 1.0.2 <!-- x-release-please-version -->
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -133,6 +133,9 @@ screen.
 
 == Changelog ==
 
+= 1.0.2 =
+* Fix Version header format for WordPress.org compatibility
+
 = 1.0.1 =
 * Use wp_enqueue_script() and wp_add_inline_script() for SDK injection instead of inline script tags
 * Fix Plugin URI to valid public URL
@@ -148,6 +151,9 @@ screen.
 * WooCommerce auto-auth connection flow
 
 == Upgrade Notice ==
+
+= 1.0.2 =
+Fix Version header format for WordPress.org compatibility.
 
 = 1.0.1 =
 WordPress.org compliance fixes: script enqueue improvements and updated plugin metadata.
