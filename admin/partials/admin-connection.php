@@ -12,12 +12,12 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$options  = new Segmentflow_Options();
-$auth     = new Segmentflow_Auth( $options );
-$platform = Segmentflow_Helper::get_platform();
+$segmentflow_options  = new Segmentflow_Options();
+$segmentflow_auth     = new Segmentflow_Auth( $segmentflow_options );
+$segmentflow_platform = Segmentflow_Helper::get_platform();
 ?>
 
-<?php if ( $auth->is_connected() ) : ?>
+<?php if ( $segmentflow_auth->is_connected() ) : ?>
 	<div class="segmentflow-connection-status segmentflow-connection-status--connected">
 		<span class="dashicons dashicons-yes-alt"></span>
 		<strong><?php esc_html_e( 'Connected to Segmentflow', 'segmentflow-connect' ); ?></strong>
@@ -26,27 +26,27 @@ $platform = Segmentflow_Helper::get_platform();
 	<table class="form-table">
 		<tbody>
 			<?php
-			$org_name = $options->get( 'organization_name' );
-			if ( ! empty( $org_name ) ) :
+			$segmentflow_org_name = $segmentflow_options->get( 'organization_name' );
+			if ( ! empty( $segmentflow_org_name ) ) :
 				?>
 				<tr>
 					<th scope="row"><?php esc_html_e( 'Organization', 'segmentflow-connect' ); ?></th>
-					<td><?php echo esc_html( $org_name ); ?></td>
+					<td><?php echo esc_html( $segmentflow_org_name ); ?></td>
 				</tr>
 			<?php endif; ?>
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Platform', 'segmentflow-connect' ); ?></th>
 				<td>
 					<?php
-					$connected_platform = $options->get_connected_platform();
-					echo esc_html( 'woocommerce' === $connected_platform ? 'WooCommerce' : 'WordPress' );
+					$segmentflow_connected_platform = $segmentflow_options->get_connected_platform();
+					echo esc_html( 'woocommerce' === $segmentflow_connected_platform ? 'WooCommerce' : 'WordPress' );
 					?>
 				</td>
 			</tr>
 			<tr>
 				<th scope="row"><?php esc_html_e( 'Write Key', 'segmentflow-connect' ); ?></th>
 				<td>
-					<code><?php echo esc_html( substr( $options->get_write_key(), 0, 8 ) . '...' ); ?></code>
+					<code><?php echo esc_html( substr( $segmentflow_options->get_write_key(), 0, 8 ) . '...' ); ?></code>
 				</td>
 			</tr>
 			<tr>
@@ -63,10 +63,22 @@ $platform = Segmentflow_Helper::get_platform();
 					</span>
 				</td>
 			</tr>
+			<tr>
+				<th scope="row"><?php esc_html_e( 'Lead Magnets &amp; Forms', 'segmentflow-connect' ); ?></th>
+				<td>
+					<?php $segmentflow_websites_url = rtrim( $segmentflow_options->get_app_host(), '/' ) . '/websites'; ?>
+					<a href="<?php echo esc_url( $segmentflow_websites_url ); ?>" target="_blank" rel="noopener">
+						<?php esc_html_e( 'Manage in Segmentflow dashboard', 'segmentflow-connect' ); ?>
+					</a>
+					<p class="description">
+						<?php esc_html_e( 'Published forms are automatically displayed on your site — no embed code needed.', 'segmentflow-connect' ); ?>
+					</p>
+				</td>
+			</tr>
 		</tbody>
 	</table>
 
-	<?php if ( ! Segmentflow_Helper::is_woocommerce_active() && 'WordPress' === $connected_platform ) : ?>
+	<?php if ( ! Segmentflow_Helper::is_woocommerce_active() && 'WordPress' === $segmentflow_connected_platform ) : ?>
 		<div class="notice notice-info inline">
 			<p>
 				<?php esc_html_e( 'WooCommerce not detected. Install WooCommerce for order tracking, customer sync, and revenue attribution.', 'segmentflow-connect' ); ?>
@@ -83,18 +95,18 @@ $platform = Segmentflow_Helper::get_platform();
 <?php else : ?>
 	<?php
 	// Check for logo file: try SVG first, then PNG.
-	$logo_path = SEGMENTFLOW_PATH . 'assets/images/logo.svg';
-	$logo_url  = SEGMENTFLOW_URL . 'assets/images/logo.svg';
+	$segmentflow_logo_path = SEGMENTFLOW_PATH . 'assets/images/logo.svg';
+	$segmentflow_logo_url  = SEGMENTFLOW_URL . 'assets/images/logo.svg';
 
-	if ( ! file_exists( $logo_path ) ) {
-		$logo_path = SEGMENTFLOW_PATH . 'assets/images/logo.png';
-		$logo_url  = SEGMENTFLOW_URL . 'assets/images/logo.png';
+	if ( ! file_exists( $segmentflow_logo_path ) ) {
+		$segmentflow_logo_path = SEGMENTFLOW_PATH . 'assets/images/logo.png';
+		$segmentflow_logo_url  = SEGMENTFLOW_URL . 'assets/images/logo.png';
 	}
 
-	if ( file_exists( $logo_path ) ) :
+	if ( file_exists( $segmentflow_logo_path ) ) :
 		?>
 		<div class="segmentflow-logo">
-			<img src="<?php echo esc_url( $logo_url ); ?>" alt="<?php esc_attr_e( 'Segmentflow', 'segmentflow-connect' ); ?>" />
+			<img src="<?php echo esc_url( $segmentflow_logo_url ); ?>" alt="<?php esc_attr_e( 'Segmentflow', 'segmentflow-connect' ); ?>" />
 		</div>
 	<?php endif; ?>
 

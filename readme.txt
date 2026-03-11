@@ -4,7 +4,7 @@ Tags: email marketing, analytics, segmentation, woocommerce, tracking
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 8.1
-Stable tag: 1.0.3
+Stable tag: 1.0.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -133,6 +133,14 @@ screen.
 
 == Changelog ==
 
+= 1.0.5 =
+* Add Lead Magnets & Forms row to plugin connection page linking to the Segmentflow dashboard
+
+= 1.0.4 =
+* Fix PHPCS warnings: sanitize and unslash cookie input
+* Fix missing version parameter on enqueued CDN script
+* Prefix all global variables in admin template files
+
 = 1.0.3 =
 * Fix Stable tag format in readme.txt
 
@@ -154,6 +162,9 @@ screen.
 * WooCommerce auto-auth connection flow
 
 == Upgrade Notice ==
+
+= 1.0.4 =
+Fix WordPress PHPCS coding standards warnings for plugin review compliance.
 
 = 1.0.3 =
 Fix Stable tag format in readme.txt.
