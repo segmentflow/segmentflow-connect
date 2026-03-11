@@ -153,4 +153,117 @@ class Test_Tracking extends WP_UnitTestCase {
 		delete_option( 'segmentflow_write_key' );
 		delete_option( 'segmentflow_debug_mode' );
 	}
+
+	/**
+	 * Test that the SDK script has no loading strategy set.
+	 *
+	 * WordPress silently demotes async/defer to blocking when an inline
+	 * after-script is attached (which is always the case for the SDK).
+	 * Setting a strategy would be dead code, so we assert it is absent.
+	 *
+	 * @see https://make.wordpress.org/core/2023/07/14/registering-scripts-with-async-and-defer-attributes-in-wordpress-6-3/
+	 */
+	public function test_sdk_script_has_no_loading_strategy(): void {
+		update_option( 'segmentflow_write_key', 'test_key_abc' );
+
+		$options  = new Segmentflow_Options();
+		$tracking = new Segmentflow_Tracking( $options );
+		$tracking->enqueue_sdk();
+
+		$registered = wp_scripts()->registered[ Segmentflow_Tracking::SDK_HANDLE ] ?? null;
+		$this->assertNotNull( $registered, 'SDK script should be registered.' );
+
+		// extra['strategy'] should be absent or empty — WordPress would strip
+		// it anyway due to the inline after-script, so we must not set it.
+		$strategy = $registered->extra['strategy'] ?? null;
+		$this->assertNull( $strategy, 'SDK script must not have a loading strategy set — WordPress strips async/defer when inline after-scripts are present.' );
+
+		// Cleanup.
+		delete_option( 'segmentflow_write_key' );
+	}
+
+	/**
+	 * Test that the SDK script is placed in the <head>, not the footer.
+	 *
+	 * group = 0 means head; group = 1 means footer.
+	 */
+	public function test_sdk_script_is_in_head(): void {
+		update_option( 'segmentflow_write_key', 'test_key_abc' );
+
+		$options  = new Segmentflow_Options();
+		$tracking = new Segmentflow_Tracking( $options );
+		$tracking->enqueue_sdk();
+
+		$registered = wp_scripts()->registered[ Segmentflow_Tracking::SDK_HANDLE ] ?? null;
+		$this->assertNotNull( $registered, 'SDK script should be registered.' );
+
+		$group = $registered->extra['group'] ?? 0;
+		$this->assertSame( 0, $group, 'SDK script must be placed in <head> (group 0), not the footer.' );
+
+		// Cleanup.
+		delete_option( 'segmentflow_write_key' );
+	}
+
+	/**
+	 * Test that the storefront script declares the SDK as a dependency.
+	 *
+	 * This ensures storefront.iife.js always loads after the SDK, so
+	 * window.segmentflow is available when form-tracking listeners attach.
+	 */
+	public function test_storefront_script_depends_on_sdk(): void {
+		update_option( 'segmentflow_write_key', 'test_key_abc' );
+
+		$script_path = SEGMENTFLOW_PATH . 'assets/js/storefront.iife.js';
+		if ( ! file_exists( $script_path ) ) {
+			$this->markTestSkipped( 'storefront.iife.js not built.' );
+		}
+
+		$options  = new Segmentflow_Options();
+		$tracking = new Segmentflow_Tracking( $options );
+		$tracking->enqueue_storefront_assets();
+
+		$registered = wp_scripts()->registered['segmentflow-storefront'] ?? null;
+		$this->assertNotNull( $registered, 'Storefront script should be registered.' );
+		$this->assertContains(
+			Segmentflow_Tracking::SDK_HANDLE,
+			$registered->deps,
+			'Storefront script must declare the SDK handle as a dependency.'
+		);
+
+		// Cleanup.
+		delete_option( 'segmentflow_write_key' );
+		wp_dequeue_script( 'segmentflow-storefront' );
+		wp_deregister_script( 'segmentflow-storefront' );
+	}
+
+	/**
+	 * Test that the storefront script uses the defer loading strategy.
+	 *
+	 * Unlike the SDK (which has an inline after-script and therefore cannot
+	 * use defer/async), the storefront script has no inline scripts attached,
+	 * so WordPress will honour the defer strategy and emit it on the tag.
+	 */
+	public function test_storefront_script_has_defer_strategy(): void {
+		update_option( 'segmentflow_write_key', 'test_key_abc' );
+
+		$script_path = SEGMENTFLOW_PATH . 'assets/js/storefront.iife.js';
+		if ( ! file_exists( $script_path ) ) {
+			$this->markTestSkipped( 'storefront.iife.js not built.' );
+		}
+
+		$options  = new Segmentflow_Options();
+		$tracking = new Segmentflow_Tracking( $options );
+		$tracking->enqueue_storefront_assets();
+
+		$registered = wp_scripts()->registered['segmentflow-storefront'] ?? null;
+		$this->assertNotNull( $registered, 'Storefront script should be registered.' );
+
+		$strategy = $registered->extra['strategy'] ?? null;
+		$this->assertSame( 'defer', $strategy, 'Storefront script must use defer strategy.' );
+
+		// Cleanup.
+		delete_option( 'segmentflow_write_key' );
+		wp_dequeue_script( 'segmentflow-storefront' );
+		wp_deregister_script( 'segmentflow-storefront' );
+	}
 }

@@ -126,14 +126,18 @@ class Segmentflow_Tracking {
 		// which produces valid JSON literals and escapes characters that could break
 		// out of a <script> context (e.g., </script>, HTML entities). This is the
 		// WordPress-recommended approach for safe PHP-to-JS data transfer.
+		// Note: no 'strategy' key here. WordPress automatically demotes any
+		// async/defer strategy to blocking when an inline after-script is
+		// attached (wp_add_inline_script position='after'), which is exactly
+		// the case below. Setting a strategy would be dead code and misleading.
+		// See: https://make.wordpress.org/core/2023/07/14/registering-scripts-with-async-and-defer-attributes-in-wordpress-6-3/
 		wp_enqueue_script(
 			self::SDK_HANDLE,
 			'https://cdn.cloud.segmentflow.ai/sdk.js',
 			[],
-			null, // External CDN script -- no local version number.
+			SEGMENTFLOW_VERSION,
 			[
 				'in_footer' => false,
-				'strategy'  => 'async',
 			]
 		);
 
