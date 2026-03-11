@@ -56,7 +56,7 @@ jobs:
       # TODO: Configure WP_ORG_SVN_USERNAME and WP_ORG_SVN_PASSWORD secrets
       # once WordPress.org plugin directory credentials are available.
       - name: Deploy to WordPress.org SVN
-        if: ${{ secrets.WP_ORG_SVN_USERNAME != '' }}
+        if: ${{ env.SVN_USERNAME != '' }}
         uses: 10up/action-wordpress-plugin-deploy@v2
         with:
           generate-zip: false
