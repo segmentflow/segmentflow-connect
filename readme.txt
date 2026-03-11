@@ -4,7 +4,7 @@ Tags: email marketing, analytics, segmentation, woocommerce, tracking
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 8.1
-Stable tag: 1.0.5
+Stable tag: 1.0.6
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -132,6 +132,10 @@ screen.
 4. WooCommerce integration -- Store URL, WC version, currency, and enrichment status
 
 == Changelog ==
+
+= 1.0.6 =
+* Add dedicated Forms tab with site URL copy button, dashboard links, setup guide, and testing tip
+* Remove Lead Magnets & Forms row from Connection tab (moved to Forms tab)
 
 = 1.0.5 =
 * Add Lead Magnets & Forms row to plugin connection page linking to the Segmentflow dashboard

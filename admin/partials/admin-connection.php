@@ -63,18 +63,7 @@ $segmentflow_platform = Segmentflow_Helper::get_platform();
 					</span>
 				</td>
 			</tr>
-			<tr>
-				<th scope="row"><?php esc_html_e( 'Lead Magnets &amp; Forms', 'segmentflow-connect' ); ?></th>
-				<td>
-					<?php $segmentflow_websites_url = rtrim( $segmentflow_options->get_app_host(), '/' ) . '/websites'; ?>
-					<a href="<?php echo esc_url( $segmentflow_websites_url ); ?>" target="_blank" rel="noopener">
-						<?php esc_html_e( 'Manage in Segmentflow dashboard', 'segmentflow-connect' ); ?>
-					</a>
-					<p class="description">
-						<?php esc_html_e( 'Published forms are automatically displayed on your site — no embed code needed.', 'segmentflow-connect' ); ?>
-					</p>
-				</td>
-			</tr>
+	
 		</tbody>
 	</table>
 

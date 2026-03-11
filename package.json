@@ -1,6 +1,6 @@
 {
   "name": "segmentflow-connect",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "private": true,
   "type": "module",
   "description": "Connect your WordPress site or WooCommerce store to Segmentflow for AI-powered email marketing.",

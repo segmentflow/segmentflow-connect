@@ -17,6 +17,7 @@ defined( 'ABSPATH' ) || exit;
  * Tabs adapt based on active integrations:
  *
  * - Connection: Always shown. Connect/disconnect to Segmentflow.
+ * - Forms: Shown when connected. Lead magnets & forms setup guide.
  * - Settings: Shown when connected. Debug mode, consent, API host.
  * - WooCommerce: Shown when WooCommerce is active AND connected. WC-specific settings.
  */
@@ -111,6 +112,7 @@ class Segmentflow_Admin {
 		];
 
 		if ( $this->options->is_connected() ) {
+			$tabs['forms']    = __( 'Forms', 'segmentflow-connect' );
 			$tabs['settings'] = __( 'Settings', 'segmentflow-connect' );
 
 			if ( Segmentflow_Helper::is_woocommerce_active() ) {

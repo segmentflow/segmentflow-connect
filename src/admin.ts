@@ -42,6 +42,11 @@ function init(): void {
     disconnectButton.addEventListener("click", handleDisconnect);
   }
 
+  // Wire up copy buttons on the Forms tab.
+  document.querySelectorAll<HTMLButtonElement>(".segmentflow-copy-btn").forEach((btn) => {
+    btn.addEventListener("click", handleCopyUrl);
+  });
+
   // Check if we just returned from the auth flow with a poll token.
   if (segmentflowAdmin.pollToken) {
     handleAuthReturn(segmentflowAdmin.pollToken);
@@ -227,6 +232,29 @@ function escapeHtml(text: string): string {
   const el = document.createElement("span");
   el.textContent = text;
   return el.innerHTML;
+}
+
+/**
+ * Handle the "Copy" button click on the Forms tab.
+ * Copies the site URL from the button's data-url attribute to the clipboard
+ * and gives brief "Copied!" feedback.
+ */
+function handleCopyUrl(event: Event): void {
+  const btn = event.currentTarget as HTMLButtonElement;
+  const url = btn.dataset.url ?? "";
+
+  if (!url || !navigator.clipboard) return;
+
+  navigator.clipboard.writeText(url).then(() => {
+    const original = btn.textContent ?? "Copy";
+    btn.textContent = "Copied!";
+    btn.classList.add("segmentflow-copy-btn--copied");
+
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.classList.remove("segmentflow-copy-btn--copied");
+    }, 2000);
+  });
 }
 
 /**

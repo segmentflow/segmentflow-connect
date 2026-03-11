@@ -66,7 +66,7 @@ class Segmentflow_Identity_Cookie {
 
 		// Try the unified cookie first.
 		if ( ! empty( $_COOKIE[ self::COOKIE_NAME ] ) ) {
-			$raw = $_COOKIE[ self::COOKIE_NAME ];
+			$raw = sanitize_text_field( wp_unslash( $_COOKIE[ self::COOKIE_NAME ] ) );
 			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- Required for cookie format.
 			$json = base64_decode( $raw, true );
 			if ( false !== $json ) {

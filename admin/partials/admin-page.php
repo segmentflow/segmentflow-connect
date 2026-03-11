@@ -19,10 +19,10 @@ defined( 'ABSPATH' ) || exit;
 
 	<?php if ( count( $tabs ) > 1 ) : ?>
 		<nav class="nav-tab-wrapper">
-			<?php foreach ( $tabs as $tab_slug => $tab_label ) : ?>
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=segmentflow&tab=' . $tab_slug ) ); ?>"
-					class="nav-tab <?php echo esc_attr( $current_tab === $tab_slug ? 'nav-tab-active' : '' ); ?>">
-					<?php echo esc_html( $tab_label ); ?>
+			<?php foreach ( $tabs as $segmentflow_tab_slug => $segmentflow_tab_label ) : ?>
+			<a href="<?php echo esc_url( admin_url( 'admin.php?page=segmentflow&tab=' . $segmentflow_tab_slug ) ); ?>"
+				class="nav-tab <?php echo esc_attr( $current_tab === $segmentflow_tab_slug ? 'nav-tab-active' : '' ); ?>">
+				<?php echo esc_html( $segmentflow_tab_label ); ?>
 				</a>
 			<?php endforeach; ?>
 		</nav>
@@ -31,6 +31,9 @@ defined( 'ABSPATH' ) || exit;
 	<div class="segmentflow-tab-content">
 		<?php
 		switch ( $current_tab ) {
+			case 'forms':
+				include SEGMENTFLOW_PATH . 'admin/partials/admin-forms.php';
+				break;
 			case 'settings':
 				include SEGMENTFLOW_PATH . 'admin/partials/admin-settings.php';
 				break;

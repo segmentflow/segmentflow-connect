@@ -10,13 +10,13 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$options            = new Segmentflow_Options();
-$connected_platform = $options->get_connected_platform();
+$segmentflow_options            = new Segmentflow_Options();
+$segmentflow_connected_platform = $segmentflow_options->get_connected_platform();
 ?>
 
 <h2><?php esc_html_e( 'WooCommerce Integration', 'segmentflow-connect' ); ?></h2>
 
-<?php if ( 'woocommerce' === $connected_platform ) : ?>
+<?php if ( 'woocommerce' === $segmentflow_connected_platform ) : ?>
 	<div class="segmentflow-connection-status segmentflow-connection-status--connected">
 		<span class="dashicons dashicons-yes-alt"></span>
 		<strong><?php esc_html_e( 'WooCommerce integration active', 'segmentflow-connect' ); ?></strong>
