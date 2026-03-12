@@ -4,7 +4,9 @@ Tags: email marketing, analytics, segmentation, woocommerce, tracking
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 8.1
-Stable tag: 1.0.6
+x-release-please-start-version: .
+Stable tag: 1.1.0
+x-release-please-end: .
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
