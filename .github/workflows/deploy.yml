@@ -20,6 +20,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: v${{ inputs.version }}
+          fetch-depth: 0
+
+      - name: Verify tag exists
+        run: |
+          git fetch --tags
+          git rev-parse "v${{ inputs.version }}" >/dev/null 2>&1 || \
+            (echo "::error::Tag v${{ inputs.version }} does not exist" && exit 1)
+          echo "Tag v${{ inputs.version }} verified."
 
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
@@ -37,5 +45,6 @@ jobs:
           SVN_USERNAME: ${{ secrets.WP_ORG_SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.WP_ORG_SVN_PASSWORD }}
           SLUG: segmentflow-connect
+          VERSION: ${{ inputs.version }}
           BUILD_DIR: "."
           ASSETS_DIR: ".wordpress-org"
