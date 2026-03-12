@@ -64,7 +64,6 @@ jobs:
           VERSION: ${{ needs.release.outputs.version }}
 
       - name: Deploy to WordPress.org SVN
-        if: ${{ secrets.WP_ORG_SVN_USERNAME != '' }}
         uses: 10up/action-wordpress-plugin-deploy@v2
         with:
           generate-zip: false
