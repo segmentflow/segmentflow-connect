@@ -1,5 +1,5 @@
 === Segmentflow Connect ===
-Contributors: segmentflow
+Contributors: olivernaaris
 Tags: email marketing, analytics, segmentation, woocommerce, tracking
 Requires at least: 5.8
 Tested up to: 6.9
