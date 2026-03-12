@@ -1,13 +1,7 @@
 name: Release
-run-name: Release ${{ inputs.version != '' && format('v{0}', inputs.version) || 'latest' }}
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Version (e.g. 1.0.7) — for display only, optional"
-        required: false
-        type: string
 
 permissions:
   contents: write
@@ -27,6 +21,16 @@ jobs:
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      - name: Update workflow run name
+        if: steps.release.outputs.release_created == 'true'
+        run: |
+          gh api \
+            --method PATCH \
+            /repos/${{ github.repository }}/actions/runs/${{ github.run_id }} \
+            -f display_title="Release v${{ steps.release.outputs.version }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-publish:
     name: Build & Publish v${{ needs.release.outputs.version }}
