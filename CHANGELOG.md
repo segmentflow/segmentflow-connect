@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/segmentflow/segmentflow-connect/compare/v1.1.0...v1.1.1) (2026-03-12)
+
+
+### Bug Fixes
+
+* remove BUILD_DIR to respect .distignore on SVN deploy ([668a896](https://github.com/segmentflow/segmentflow-connect/commit/668a896cdbfcc0d9071a06ea638740655c152ecf))
+* sync version numbers and add release-please markers ([3bb3c1e](https://github.com/segmentflow/segmentflow-connect/commit/3bb3c1eed76eac362255c0206466c5acee6766dd))
+
 ## [1.1.0](https://github.com/segmentflow/segmentflow-connect/compare/v1.0.6...v1.1.0) (2026-03-12)
 
 
