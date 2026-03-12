@@ -478,6 +478,117 @@ class Test_Server_Events extends WP_UnitTestCase {
 	}
 
 	// -------------------------------------------------------------------------
+	// Anonymous userId handling tests
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Test build_track_event omits null userId for anonymous visitors.
+	 *
+	 * Before this fix, build_track_event() included `"userId": null` in the
+	 * JSON payload, which the ingest API rejected. Now it unsets null userId
+	 * the same way build_identify_event() does.
+	 */
+	public function test_build_track_event_omits_null_user_id(): void {
+		$reflection = new \ReflectionMethod( $this->server_events, 'build_track_event' );
+
+		// Anonymous visitor: identity has 'a' (anonymousId) but no 'u' (userId).
+		$identity = [ 'a' => 'anon-track-1' ];
+		$result   = $reflection->invoke(
+			$this->server_events,
+			'form_submitted',
+			$identity,
+			[ 'form_type' => 'cf7' ]
+		);
+
+		$this->assertSame( 'track', $result['type'] );
+		$this->assertSame( 'form_submitted', $result['event'] );
+		$this->assertSame( 'anon-track-1', $result['anonymousId'] );
+		$this->assertArrayNotHasKey( 'userId', $result, 'userId should be omitted when null' );
+	}
+
+	/**
+	 * Test build_track_event includes userId for logged-in users.
+	 */
+	public function test_build_track_event_includes_user_id_for_logged_in(): void {
+		$reflection = new \ReflectionMethod( $this->server_events, 'build_track_event' );
+
+		// Logged-in visitor: identity has both 'a' and 'u'.
+		$identity = [
+			'a' => 'anon-track-2',
+			'u' => 'wp_42',
+		];
+		$result   = $reflection->invoke(
+			$this->server_events,
+			'form_submitted',
+			$identity,
+			[ 'form_type' => 'cf7' ]
+		);
+
+		$this->assertSame( 'wp_42', $result['userId'] );
+		$this->assertSame( 'anon-track-2', $result['anonymousId'] );
+	}
+
+	/**
+	 * Test build_identify_event omits null userId for anonymous visitors.
+	 *
+	 * This was already working before the fix, but we test it for completeness
+	 * and to ensure the pattern is consistent between identify and track.
+	 */
+	public function test_build_identify_event_omits_null_user_id(): void {
+		$reflection = new \ReflectionMethod( $this->server_events, 'build_identify_event' );
+
+		$identity = [ 'a' => 'anon-identify-1' ];
+		$result   = $reflection->invoke(
+			$this->server_events,
+			$identity,
+			[ 'email' => 'test@example.com' ]
+		);
+
+		$this->assertSame( 'identify', $result['type'] );
+		$this->assertSame( 'anon-identify-1', $result['anonymousId'] );
+		$this->assertArrayNotHasKey( 'userId', $result, 'userId should be omitted when null' );
+	}
+
+	/**
+	 * Test anonymous user_register sends events without userId in track event.
+	 *
+	 * This tests the end-to-end flow: an anonymous visitor (no WordPress account)
+	 * triggers a registration where the identity cookie has no 'u' field.
+	 * Both identify and track events should omit userId.
+	 *
+	 * Note: In practice, on_user_register always has a WP user ID because the
+	 * hook fires after user creation. This test verifies the payload builder
+	 * handles missing userId correctly at the event construction level.
+	 */
+	public function test_build_events_consistent_null_handling(): void {
+		$identify_reflection = new \ReflectionMethod( $this->server_events, 'build_identify_event' );
+		$track_reflection    = new \ReflectionMethod( $this->server_events, 'build_track_event' );
+
+		$anonymous_identity = [ 'a' => 'anon-consistency-1' ];
+
+		$identify = $identify_reflection->invoke(
+			$this->server_events,
+			$anonymous_identity,
+			[ 'email' => 'jane@example.com' ]
+		);
+
+		$track = $track_reflection->invoke(
+			$this->server_events,
+			'form_submitted',
+			$anonymous_identity,
+			[ 'form_type' => 'cf7' ]
+		);
+
+		// Both should have the same pattern: no userId key at all.
+		$this->assertArrayNotHasKey( 'userId', $identify );
+		$this->assertArrayNotHasKey( 'userId', $track );
+
+		// Both should have anonymousId.
+		$this->assertSame( 'anon-consistency-1', $identify['anonymousId'] );
+		$this->assertSame( 'anon-consistency-1', $track['anonymousId'] );
+	}
+
+	// -------------------------------------------------------------------------
 	// Helpers
 	// -------------------------------------------------------------------------
 

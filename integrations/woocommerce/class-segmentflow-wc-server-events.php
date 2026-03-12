@@ -276,7 +276,7 @@ class Segmentflow_WC_Server_Events {
 	 * @return array<string, mixed> The event payload.
 	 */
 	private function build_track_event( string $event_name, array $identity, array $properties ): array {
-		return [
+		$event = [
 			'type'        => 'track',
 			'event'       => $event_name,
 			'userId'      => $identity['u'] ?? null,
@@ -285,6 +285,13 @@ class Segmentflow_WC_Server_Events {
 			'source'      => self::EVENT_SOURCE,
 			'timestamp'   => gmdate( 'c' ),
 		];
+
+		// Remove null userId to keep payload clean.
+		if ( null === $event['userId'] ) {
+			unset( $event['userId'] );
+		}
+
+		return $event;
 	}
 
 	/**

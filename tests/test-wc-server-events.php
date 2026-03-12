@@ -377,6 +377,61 @@ class Test_WC_Server_Events extends WP_UnitTestCase {
 	}
 
 	// -------------------------------------------------------------------------
+	// Anonymous userId handling tests
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Test WC build_track_event omits null userId for anonymous visitors.
+	 *
+	 * The WC build_track_event had the same bug as the base class: it sent
+	 * "userId": null for anonymous visitors. This test verifies the fix.
+	 */
+	public function test_wc_build_track_event_omits_null_user_id(): void {
+		$reflection = new \ReflectionMethod( $this->server_events, 'build_track_event' );
+
+		// Anonymous visitor: identity has 'a' (anonymousId) but no 'u' (userId).
+		$identity = [ 'a' => 'anon-wc-track-1' ];
+		$result   = $reflection->invoke(
+			$this->server_events,
+			'add_to_cart',
+			$identity,
+			[
+				'product_id' => 42,
+				'quantity'   => 1,
+			]
+		);
+
+		$this->assertSame( 'track', $result['type'] );
+		$this->assertSame( 'add_to_cart', $result['event'] );
+		$this->assertSame( 'anon-wc-track-1', $result['anonymousId'] );
+		$this->assertArrayNotHasKey( 'userId', $result, 'userId should be omitted when null' );
+	}
+
+	/**
+	 * Test WC build_track_event includes userId for logged-in WC customers.
+	 */
+	public function test_wc_build_track_event_includes_user_id_for_customer(): void {
+		$reflection = new \ReflectionMethod( $this->server_events, 'build_track_event' );
+
+		$identity = [
+			'a' => 'anon-wc-track-2',
+			'u' => 'wc_99',
+		];
+		$result   = $reflection->invoke(
+			$this->server_events,
+			'add_to_cart',
+			$identity,
+			[
+				'product_id' => 42,
+				'quantity'   => 1,
+			]
+		);
+
+		$this->assertSame( 'wc_99', $result['userId'] );
+		$this->assertSame( 'anon-wc-track-2', $result['anonymousId'] );
+	}
+
+	// -------------------------------------------------------------------------
 	// Helpers
 	// -------------------------------------------------------------------------
 
