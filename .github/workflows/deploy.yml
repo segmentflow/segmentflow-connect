@@ -46,5 +46,4 @@ jobs:
           SVN_PASSWORD: ${{ secrets.WP_ORG_SVN_PASSWORD }}
           SLUG: segmentflow-connect
           VERSION: ${{ inputs.version }}
-          BUILD_DIR: "."
           ASSETS_DIR: ".wordpress-org"

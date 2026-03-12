@@ -33,3 +33,6 @@ composer.phar
 
 # Plugin zip
 *.zip
+
+# GitHub
+.secrets
