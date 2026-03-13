@@ -38,6 +38,7 @@ class Test_Options extends WP_UnitTestCase {
 		delete_option( 'segmentflow_app_host' );
 		delete_option( 'segmentflow_debug_mode' );
 		delete_option( 'segmentflow_consent_required' );
+		delete_option( 'segmentflow_wc_enabled' );
 		delete_option( 'segmentflow_connected_platform' );
 		parent::tear_down();
 	}

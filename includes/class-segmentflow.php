@@ -98,6 +98,11 @@ class Segmentflow {
 		// ALWAYS: register settings on admin_init (required for options.php allowlist).
 		add_action( 'admin_init', [ 'Segmentflow_Admin_Settings', 'register' ] );
 
+		// CONDITIONAL: register WooCommerce settings on admin_init.
+		if ( Segmentflow_Helper::is_woocommerce_active() ) {
+			add_action( 'admin_init', [ 'Segmentflow_Admin_Settings', 'register_woocommerce' ] );
+		}
+
 		// ALWAYS: lifecycle hooks (late activation detection).
 		$lifecycle = new Segmentflow_Lifecycle();
 		$lifecycle->register_hooks();
@@ -108,7 +113,9 @@ class Segmentflow {
 		$server_events->register_hooks();
 
 		// CONDITIONAL: WooCommerce enrichment.
-		if ( Segmentflow_Helper::is_woocommerce_active() ) {
+		// Class files are always loaded when WC is active (see load_dependencies()),
+		// but hooks are only registered when the user has enabled the integration.
+		if ( Segmentflow_Helper::is_woocommerce_active() && $options->is_wc_enabled() ) {
 			$wc_tracking = new Segmentflow_WC_Tracking( $options, $tracking );
 			$wc_tracking->register_hooks();
 

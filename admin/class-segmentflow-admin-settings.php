@@ -125,6 +125,53 @@ class Segmentflow_Admin_Settings {
 	}
 
 	/**
+	 * Register WooCommerce settings with WordPress.
+	 *
+	 * Called during admin_init. Registers the WooCommerce-specific settings
+	 * under a separate settings group so they can be saved independently
+	 * from the general settings tab.
+	 */
+	public static function register_woocommerce(): void {
+		// WooCommerce settings section.
+		add_settings_section(
+			'segmentflow_wc_settings_section',
+			__( 'WooCommerce Integration', 'segmentflow-connect' ),
+			[ __CLASS__, 'render_wc_section_description' ],
+			'segmentflow-woocommerce'
+		);
+
+		// WooCommerce enabled toggle.
+		register_setting(
+			'segmentflow-woocommerce',
+			'segmentflow_wc_enabled',
+			[
+				'type'              => 'boolean',
+				'sanitize_callback' => 'rest_sanitize_boolean',
+				'default'           => true,
+			]
+		);
+
+		add_settings_field(
+			'segmentflow_wc_enabled',
+			__( 'Enable WooCommerce Integration', 'segmentflow-connect' ),
+			[ __CLASS__, 'render_checkbox_field' ],
+			'segmentflow-woocommerce',
+			'segmentflow_wc_settings_section',
+			[
+				'id'          => 'segmentflow_wc_enabled',
+				'description' => __( 'Enable WooCommerce tracking enrichment, cart events, checkout identity stitching, and product page data.', 'segmentflow-connect' ),
+			]
+		);
+	}
+
+	/**
+	 * Render the WooCommerce section description.
+	 */
+	public static function render_wc_section_description(): void {
+		echo '<p>' . esc_html__( 'Control how Segmentflow integrates with your WooCommerce store.', 'segmentflow-connect' ) . '</p>';
+	}
+
+	/**
 	 * Render the section description.
 	 */
 	public static function render_section_description(): void {

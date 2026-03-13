@@ -29,6 +29,8 @@ class Segmentflow_Options {
 		'segmentflow_app_host'           => 'https://dashboard.segmentflow.ai',
 		'segmentflow_debug_mode'         => false,
 		'segmentflow_consent_required'   => false,
+		// WooCommerce integration toggle (default: enabled when WC is active).
+		'segmentflow_wc_enabled'         => true,
 		// Platform identifier: 'wordpress' or 'woocommerce'.
 		'segmentflow_connected_platform' => '',
 	];
@@ -120,6 +122,18 @@ class Segmentflow_Options {
 	 */
 	public function is_consent_required(): bool {
 		return (bool) $this->get( 'consent_required', false );
+	}
+
+	/**
+	 * Check if WooCommerce integration is enabled.
+	 *
+	 * Defaults to true so existing installations are not disrupted
+	 * when the plugin is updated.
+	 *
+	 * @return bool
+	 */
+	public function is_wc_enabled(): bool {
+		return (bool) $this->get( 'wc_enabled', true );
 	}
 
 	/**
