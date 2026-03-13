@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/segmentflow/segmentflow-connect/compare/v1.1.1...v1.2.0) (2026-03-13)
+
+
+### Features
+
+* add WooCommerce integration enable/disable toggle in admin settings ([f85d373](https://github.com/segmentflow/segmentflow-connect/commit/f85d37316f125b5b318101bc9c6c5c2833e7bc55))
+
+
+### Bug Fixes
+
+* strip null userId from track events for anonymous visitors ([3a7802d](https://github.com/segmentflow/segmentflow-connect/commit/3a7802d7ae400afe498a52db1534a347e6274d4f))
+
 ## [1.1.1](https://github.com/segmentflow/segmentflow-connect/compare/v1.1.0...v1.1.1) (2026-03-12)
 
 
