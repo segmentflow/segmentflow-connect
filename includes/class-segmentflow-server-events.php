@@ -211,6 +211,15 @@ class Segmentflow_Server_Events {
 			return;
 		}
 
+		// Skip WooCommerce order notes — they are internal system comments
+		// (e.g. "Order status changed to processing"), not user-generated content.
+		// Processing them would create noisy comment_posted events and pollute
+		// identity resolution with the store's system email.
+		$post = get_post( $comment->comment_post_ID );
+		if ( $post && in_array( $post->post_type, [ 'shop_order', 'shop_order_placehold' ], true ) ) {
+			return;
+		}
+
 		$identity = $this->get_identity();
 		if ( ! $identity ) {
 			return;
@@ -248,8 +257,7 @@ class Segmentflow_Server_Events {
 			$events[] = $this->build_identify_event( $updated_identity, $traits );
 		}
 
-		// Track comment_posted.
-		$post     = get_post( $comment->comment_post_ID );
+		// Track comment_posted (reuse $post from the guard above).
 		$events[] = $this->build_track_event(
 			'comment_posted',
 			$updated_identity,
