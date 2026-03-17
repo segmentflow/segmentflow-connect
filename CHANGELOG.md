@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.3.0](https://github.com/segmentflow/segmentflow-connect/compare/v1.2.0...v1.3.0) (2026-03-17)
+
+
+### Features
+
+* **woocommerce:** inject session ID for identity stitching ([3d1852e](https://github.com/segmentflow/segmentflow-connect/commit/3d1852ea5494190875088949ad962ddee0aeb3c8))
+
+
+### Bug Fixes
+
+* skip WooCommerce order notes from comment_posted tracking ([287261a](https://github.com/segmentflow/segmentflow-connect/commit/287261a2f398eed92af5934ac8c994ad2c47eccc))
+
 ## [1.2.0](https://github.com/segmentflow/segmentflow-connect/compare/v1.1.1...v1.2.0) (2026-03-13)
 
 
