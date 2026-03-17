@@ -79,15 +79,27 @@ class Segmentflow_WC_Tracking {
 		];
 
 		// WooCommerce store context.
-		$cart_hash = null;
-		if ( function_exists( 'WC' ) && WC()->cart ) {
-			$cart_hash = WC()->cart->get_cart_hash();
+		$cart_hash  = null;
+		$session_id = null;
+		if ( function_exists( 'WC' ) ) {
+			if ( WC()->cart ) {
+				$cart_hash = WC()->cart->get_cart_hash();
+			}
+			// WC session customer ID: stable session-scoped identifier.
+			// For logged-in users this is the WordPress user ID; for guests
+			// it is a unique 32-char hex hash that persists across page
+			// loads for the session lifetime (default 48 h).  This is the
+			// WooCommerce equivalent of Shopify's cart_token.
+			if ( WC()->session ) {
+				$session_id = (string) WC()->session->get_customer_id();
+			}
 		}
 
 		$context['context'] = [
-			'store_url' => home_url(),
-			'currency'  => function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : null,
-			'cart_hash' => $cart_hash,
+			'store_url'  => home_url(),
+			'currency'   => function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : null,
+			'cart_hash'  => $cart_hash,
+			'session_id' => $session_id,
 		];
 
 		return $context;

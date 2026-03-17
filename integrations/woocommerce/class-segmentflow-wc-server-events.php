@@ -189,6 +189,18 @@ class Segmentflow_WC_Server_Events {
 			return;
 		}
 
+		// Stamp the WC session ID onto the order as meta so it is included
+		// in the REST API / webhook payload (meta_data array).  This is
+		// the WooCommerce equivalent of Shopify's cart_token — it links
+		// the anonymous browsing session to the specific order.
+		if ( function_exists( 'WC' ) && WC()->session ) {
+			$session_id = (string) WC()->session->get_customer_id();
+			if ( $session_id ) {
+				$order->update_meta_data( '_segmentflow_session_id', $session_id );
+				$order->save_meta_data();
+			}
+		}
+
 		// Extract billing identity from the order.
 		$billing_email = $order->get_billing_email();
 		$billing_phone = $order->get_billing_phone();
