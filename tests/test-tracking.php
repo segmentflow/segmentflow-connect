@@ -64,7 +64,7 @@ class Test_Tracking extends WP_UnitTestCase {
 
 		$inline = $this->get_sdk_inline_script();
 		$this->assertStringContainsString( 'Segmentflow Connect', $inline );
-		$this->assertStringContainsString( 'cdn.cloud.segmentflow.ai/sdk.js', wp_scripts()->registered[ Segmentflow_Tracking::SDK_HANDLE ]->src );
+		$this->assertStringContainsString( 'cdn.cloud.segmentflow.ai/v1/sdk.js', wp_scripts()->registered[ Segmentflow_Tracking::SDK_HANDLE ]->src );
 		$this->assertStringContainsString( 'test_key_abc', $inline );
 
 		// Cleanup.
