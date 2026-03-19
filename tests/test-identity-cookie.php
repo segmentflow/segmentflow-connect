@@ -141,6 +141,7 @@ class Test_Identity_Cookie extends WP_UnitTestCase {
 	 */
 	public function test_unified_cookie_takes_precedence(): void {
 		// Set both: unified and legacy.
+		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- Test cookie simulation.
 		$unified = base64_encode( wp_json_encode( [ 'a' => 'unified-anon' ] ) );
 		$_COOKIE[ Segmentflow_Identity_Cookie::COOKIE_NAME ]        = $unified;
 		$_COOKIE[ Segmentflow_Identity_Cookie::LEGACY_ANON_COOKIE ] = 'legacy-anon';

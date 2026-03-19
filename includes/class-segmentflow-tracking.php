@@ -171,10 +171,10 @@ class Segmentflow_Tracking {
 
 		$inline_js .= "\tif (wpContext.userId) {\n";
 
-		if ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-received' ) ) {
-			// On thankyou page: webhook-based identity handles this via appendIdentitySignal().
-			// Skipping PHP identify to prevent overwriting the billing email with the WP user email.
-		} else {
+		// On the WooCommerce thank-you page, webhook-based identity handles
+		// identification via appendIdentitySignal(). Skip the PHP identify
+		// call to prevent overwriting the billing email with the WP user email.
+		if ( ! ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-received' ) ) ) {
 			$inline_js .= "\t\tvar traits = {};\n";
 
 			if ( ! ( function_exists( 'is_checkout' ) && is_checkout() ) ) {
