@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
  * Class Segmentflow_Tracking
  *
  * Handles injection of the Segmentflow CDN SDK script into the storefront.
- * The SDK is loaded from cdn.cloud.segmentflow.ai and initialized with the site's
+ * The SDK is loaded from cdn.cloud.segmentflow.ai/v1/sdk.js and initialized with the site's
  * write key and WordPress user context.
  *
  * Integration-specific context (WooCommerce cart, currency, etc.) is added
@@ -133,7 +133,7 @@ class Segmentflow_Tracking {
 		// See: https://make.wordpress.org/core/2023/07/14/registering-scripts-with-async-and-defer-attributes-in-wordpress-6-3/
 		wp_enqueue_script(
 			self::SDK_HANDLE,
-			'https://cdn.cloud.segmentflow.ai/sdk.js',
+			'https://cdn.cloud.segmentflow.ai/v1/sdk.js',
 			[],
 			SEGMENTFLOW_VERSION,
 			[
