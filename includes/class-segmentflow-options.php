@@ -23,16 +23,20 @@ class Segmentflow_Options {
 	 * @var array<string, mixed>
 	 */
 	private const DEFAULTS = [
-		'segmentflow_write_key'          => '',
-		'segmentflow_organization_name'  => '',
-		'segmentflow_api_host'           => 'https://api.segmentflow.ai',
-		'segmentflow_app_host'           => 'https://dashboard.segmentflow.ai',
-		'segmentflow_debug_mode'         => false,
-		'segmentflow_consent_required'   => false,
+		'segmentflow_write_key'            => '',
+		'segmentflow_organization_name'    => '',
+		'segmentflow_organization_id'      => '',
+		'segmentflow_api_host'             => 'https://api.segmentflow.ai',
+		'segmentflow_app_host'             => 'https://dashboard.segmentflow.ai',
+		'segmentflow_debug_mode'           => false,
+		'segmentflow_consent_required'     => false,
 		// WooCommerce integration toggle (default: enabled when WC is active).
-		'segmentflow_wc_enabled'         => true,
+		'segmentflow_wc_enabled'           => true,
 		// Platform identifier: 'wordpress' or 'woocommerce'.
-		'segmentflow_connected_platform' => '',
+		'segmentflow_connected_platform'   => '',
+		// WooCommerce webhook credentials (set during plugin connection flow).
+		'segmentflow_webhook_secret'       => '',
+		'segmentflow_webhook_delivery_url' => '',
 	];
 
 	/**

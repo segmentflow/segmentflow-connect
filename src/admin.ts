@@ -140,12 +140,22 @@ async function handleAuthReturn(pollToken: string): Promise<void> {
         continue;
       }
 
-      const data: { connected?: boolean; write_key?: string; organization_name?: string } =
-        await response.json();
+      const data: {
+        connected?: boolean;
+        write_key?: string;
+        organization_name?: string;
+        organization_id?: string;
+        webhook_secret?: string;
+        webhook_delivery_url?: string;
+      } = await response.json();
 
       if (data.connected && data.write_key) {
-        // Save the write key via WordPress AJAX.
-        await saveConnection(data.write_key, data.organization_name ?? "");
+        // Save the write key and WooCommerce webhook credentials via WordPress AJAX.
+        await saveConnection(data.write_key, data.organization_name ?? "", {
+          organization_id: data.organization_id,
+          webhook_secret: data.webhook_secret,
+          webhook_delivery_url: data.webhook_delivery_url,
+        });
         window.location.reload();
         return;
       }
@@ -163,12 +173,30 @@ async function handleAuthReturn(pollToken: string): Promise<void> {
 /**
  * Save the connection data to WordPress via AJAX.
  */
-async function saveConnection(writeKey: string, organizationName: string): Promise<void> {
+async function saveConnection(
+  writeKey: string,
+  organizationName: string,
+  extra?: {
+    organization_id?: string;
+    webhook_secret?: string;
+    webhook_delivery_url?: string;
+  },
+): Promise<void> {
   const formData = new FormData();
   formData.append("action", "segmentflow_save_connection");
   formData.append("nonce", segmentflowAdmin.nonce);
   formData.append("write_key", writeKey);
   formData.append("organization_name", organizationName);
+
+  if (extra?.organization_id) {
+    formData.append("organization_id", extra.organization_id);
+  }
+  if (extra?.webhook_secret) {
+    formData.append("webhook_secret", extra.webhook_secret);
+  }
+  if (extra?.webhook_delivery_url) {
+    formData.append("webhook_delivery_url", extra.webhook_delivery_url);
+  }
 
   const response = await fetch(segmentflowAdmin.ajaxUrl, {
     method: "POST",

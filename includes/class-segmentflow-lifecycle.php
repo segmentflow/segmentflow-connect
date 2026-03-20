@@ -29,12 +29,24 @@ class Segmentflow_Lifecycle {
 		if ( ! class_exists( 'Segmentflow_Options' ) ) {
 			require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-options.php';
 		}
+		if ( ! class_exists( 'Segmentflow_Helper' ) ) {
+			require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-helper.php';
+		}
 
 		$options = new Segmentflow_Options();
 		$options->create_defaults();
 
 		// Store activation timestamp for diagnostics.
 		add_option( 'segmentflow_activated_at', current_time( 'mysql', true ) );
+
+		// Re-register WooCommerce webhooks if previously connected.
+		if ( Segmentflow_Helper::is_woocommerce_active() && $options->is_connected() ) {
+			if ( ! class_exists( 'Segmentflow_WC_Webhooks' ) ) {
+				require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-webhooks.php';
+			}
+			$wc_webhooks = new Segmentflow_WC_Webhooks( $options );
+			$wc_webhooks->register_webhooks();
+		}
 	}
 
 	/**
@@ -45,8 +57,13 @@ class Segmentflow_Lifecycle {
 	 * Segmentflow side.
 	 */
 	public function deactivate(): void {
-		// Nothing to do -- deactivation simply stops wp_head hook from firing.
-		// The write key and connection settings are preserved for reactivation.
+		// Remove WooCommerce webhooks on deactivation so they don't fire
+		// while the plugin is inactive (webhooks re-register on reconnect).
+		if ( Segmentflow_Helper::is_woocommerce_active() && class_exists( 'Segmentflow_WC_Webhooks' ) ) {
+			$options     = new Segmentflow_Options();
+			$wc_webhooks = new Segmentflow_WC_Webhooks( $options );
+			$wc_webhooks->remove_webhooks();
+		}
 	}
 
 	/**
@@ -74,9 +91,20 @@ class Segmentflow_Lifecycle {
 		}
 
 		// WooCommerce was just activated.
-		// If we're already connected as a plain WordPress site, set a transient
-		// to show an admin notice suggesting WC connection upgrade.
 		$options = new Segmentflow_Options();
+
+		// If already connected as WooCommerce with webhook credentials,
+		// register webhooks now that WC is available.
+		if ( $options->is_connected() && $options->get( 'webhook_secret' ) ) {
+			if ( ! class_exists( 'Segmentflow_WC_Webhooks' ) ) {
+				require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-webhooks.php';
+			}
+			$wc_webhooks = new Segmentflow_WC_Webhooks( $options );
+			$wc_webhooks->register_webhooks();
+		}
+
+		// If connected as a plain WordPress site, show an admin notice
+		// suggesting WC connection upgrade.
 		if ( $options->is_connected() && 'wordpress' === $options->get_connected_platform() ) { // phpcs:ignore WordPress.WP.CapitalPDangit.MisspelledInText -- Platform identifier.
 			set_transient( 'segmentflow_wc_upgrade_notice', true, 0 );
 		}

@@ -92,8 +92,11 @@ class Segmentflow_Auth {
 			wp_send_json_error( [ 'message' => __( 'Insufficient permissions.', 'segmentflow-connect' ) ] );
 		}
 
-		$write_key = isset( $_POST['write_key'] ) ? sanitize_text_field( wp_unslash( $_POST['write_key'] ) ) : '';
-		$org_name  = isset( $_POST['organization_name'] ) ? sanitize_text_field( wp_unslash( $_POST['organization_name'] ) ) : '';
+		$write_key            = isset( $_POST['write_key'] ) ? sanitize_text_field( wp_unslash( $_POST['write_key'] ) ) : '';
+		$org_name             = isset( $_POST['organization_name'] ) ? sanitize_text_field( wp_unslash( $_POST['organization_name'] ) ) : '';
+		$org_id               = isset( $_POST['organization_id'] ) ? sanitize_text_field( wp_unslash( $_POST['organization_id'] ) ) : '';
+		$webhook_secret       = isset( $_POST['webhook_secret'] ) ? sanitize_text_field( wp_unslash( $_POST['webhook_secret'] ) ) : '';
+		$webhook_delivery_url = isset( $_POST['webhook_delivery_url'] ) ? sanitize_url( wp_unslash( $_POST['webhook_delivery_url'] ) ) : '';
 
 		if ( empty( $write_key ) ) {
 			wp_send_json_error( [ 'message' => __( 'Missing write key.', 'segmentflow-connect' ) ] );
@@ -105,7 +108,30 @@ class Segmentflow_Auth {
 			$this->options->set( 'organization_name', $org_name );
 		}
 
+		if ( ! empty( $org_id ) ) {
+			$this->options->set( 'organization_id', $org_id );
+		}
+
 		$this->options->set( 'connected_platform', Segmentflow_Helper::get_platform() );
+
+		// Register WC webhooks immediately after saving the connection. This must
+		// happen here because the plaintext webhook secret is only available once —
+		// it comes from the single-use poll token and is never stored in plaintext
+		// on the backend. After this point, only the encrypted copy exists.
+		if ( ! empty( $webhook_secret ) && ! empty( $webhook_delivery_url ) ) {
+			$this->options->set( 'webhook_secret', $webhook_secret );
+			$this->options->set( 'webhook_delivery_url', $webhook_delivery_url );
+
+			// Register WooCommerce webhooks if WC is active.
+			// On reconnect, update_webhook_credentials() refreshes the secret on
+			// existing webhooks (prevents HMAC mismatch), then register_webhooks()
+			// creates any missing topics.
+			if ( Segmentflow_Helper::is_woocommerce_active() && class_exists( 'Segmentflow_WC_Webhooks' ) ) {
+				$wc_webhooks = new Segmentflow_WC_Webhooks( $this->options );
+				$wc_webhooks->update_webhook_credentials();
+				$wc_webhooks->register_webhooks();
+			}
+		}
 
 		wp_send_json_success( [ 'message' => __( 'Connected to Segmentflow.', 'segmentflow-connect' ) ] );
 	}
@@ -142,6 +168,12 @@ class Segmentflow_Auth {
 	 * @return bool Whether the disconnection was successful.
 	 */
 	public function disconnect(): bool {
+		// Remove WooCommerce webhooks before disconnecting.
+		if ( Segmentflow_Helper::is_woocommerce_active() && class_exists( 'Segmentflow_WC_Webhooks' ) ) {
+			$wc_webhooks = new Segmentflow_WC_Webhooks( $this->options );
+			$wc_webhooks->remove_webhooks();
+		}
+
 		// Notify the Segmentflow API (best-effort).
 		$api = new Segmentflow_API( $this->options );
 		$api->disconnect();
@@ -149,7 +181,10 @@ class Segmentflow_Auth {
 		// Remove local connection data.
 		$this->options->delete( 'write_key' );
 		$this->options->delete( 'organization_name' );
+		$this->options->delete( 'organization_id' );
 		$this->options->delete( 'connected_platform' );
+		$this->options->delete( 'webhook_secret' );
+		$this->options->delete( 'webhook_delivery_url' );
 
 		return true;
 	}

@@ -58,6 +58,7 @@ class Segmentflow {
 			require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-auth.php';
 			require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-helper.php';
 			require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-server-events.php';
+			require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-webhooks.php';
 		}
 
 		// FUTURE: Contact Form 7
@@ -125,6 +126,16 @@ class Segmentflow {
 			// Server-side cart and checkout events (shares API instance).
 			$wc_server_events = new Segmentflow_WC_Server_Events( $options, $api );
 			$wc_server_events->register_hooks();
+
+			// Self-heal: ensure WC webhooks exist whenever the plugin is connected
+			// and WooCommerce is active. Covers cases where webhooks were manually
+			// deleted from WC admin, WooCommerce was reinstalled, or the database
+			// was restored. Runs on admin_init to avoid frontend overhead.
+			// register_webhooks() is idempotent — skips topics that already exist.
+			if ( $options->is_connected() && $options->get( 'webhook_secret' ) ) {
+				$wc_webhooks = new Segmentflow_WC_Webhooks( $options );
+				add_action( 'admin_init', [ $wc_webhooks, 'register_webhooks' ] );
+			}
 		}
 	}
 }
