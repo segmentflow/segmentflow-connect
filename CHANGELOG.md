@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.4.0](https://github.com/segmentflow/segmentflow-connect/compare/v1.3.0...v1.4.0) (2026-03-20)
+
+
+### Features
+
+* update SDK CDN URL to versioned /v1/ path ([0e72e90](https://github.com/segmentflow/segmentflow-connect/commit/0e72e9085a32dce0d93e84334c922e6d68593076))
+* update SDK CDN URL to versioned /v1/ path ([e197dbc](https://github.com/segmentflow/segmentflow-connect/commit/e197dbcb83010015e259cd7a22ec8a7286d28cc5))
+* **woocommerce:** register WC webhooks from plugin on connection ([e9c9815](https://github.com/segmentflow/segmentflow-connect/commit/e9c9815f357d6cef2edd7d23c790e00ab0d56bf3))
+
+
+### Bug Fixes
+
+* resolve CI lint and test failures ([7fd6438](https://github.com/segmentflow/segmentflow-connect/commit/7fd6438e71ca5218a395269d345527dcf21cb396))
+
 ## [1.3.0](https://github.com/segmentflow/segmentflow-connect/compare/v1.2.0...v1.3.0) (2026-03-17)
 
 
