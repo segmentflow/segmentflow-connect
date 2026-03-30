@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/segmentflow/segmentflow-connect/compare/v1.4.0...v1.5.0) (2026-03-30)
+
+
+### Features
+
+* add shortcode for inline form embedding ([c0ad043](https://github.com/segmentflow/segmentflow-connect/commit/c0ad043d648712a43eeeba7d6a295aad06b06076))
+
 ## [1.4.0](https://github.com/segmentflow/segmentflow-connect/compare/v1.3.0...v1.4.0) (2026-03-20)
 
 
