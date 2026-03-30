@@ -47,6 +47,7 @@ class Segmentflow {
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-auth.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-api.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-server-events.php';
+		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-shortcodes.php';
 
 		// ALWAYS: admin classes.
 		require_once SEGMENTFLOW_PATH . 'admin/class-segmentflow-admin.php';
@@ -98,6 +99,9 @@ class Segmentflow {
 
 		// ALWAYS: register settings on admin_init (required for options.php allowlist).
 		add_action( 'admin_init', [ 'Segmentflow_Admin_Settings', 'register' ] );
+
+		// ALWAYS: shortcodes for inline form embedding.
+		Segmentflow_Shortcodes::register();
 
 		// CONDITIONAL: register WooCommerce settings on admin_init.
 		if ( Segmentflow_Helper::is_woocommerce_active() ) {
