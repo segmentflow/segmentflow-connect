@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/segmentflow/segmentflow-connect/compare/v1.5.0...v2.0.0) (2026-04-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* **forms:** The event name emitted from CF7 and Elementor Pro form captures has changed from `form_submitted` to `form_submission`. Any journeys, segments, or dashboard queries keyed on the old event name must be updated.
+
+### Features
+
+* **forms:** rename form_submitted event to form_submission ([6bc1ae0](https://github.com/segmentflow/segmentflow-connect/commit/6bc1ae0a7d0d0877457a5d4d96221eb006954b15))
+
 ## [1.5.0](https://github.com/segmentflow/segmentflow-connect/compare/v1.4.0...v1.5.0) (2026-03-30)
 
 
