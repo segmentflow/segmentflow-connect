@@ -2,7 +2,7 @@
  * Segmentflow Connect — Storefront Form Tracking
  *
  * Listens for form submission events from Contact Form 7 and Elementor Pro,
- * and fires segmentflow.track("form_submitted", ...) for each.
+ * and fires segmentflow.track("form_submission", ...) for each.
  *
  * Loaded via wp_enqueue_script() on all frontend pages where form plugins
  * are active. Uses optional chaining on window.segmentflow in case the
@@ -43,7 +43,7 @@ document.addEventListener("wpcf7mailsent", ((event: CustomEvent<CF7Detail>) => {
   }
 
   window.segmentflow?.track({
-    event: "form_submitted",
+    event: "form_submission",
     properties,
   });
 }) as EventListener);
@@ -105,7 +105,7 @@ if ($) {
       }
 
       window.segmentflow?.track({
-        event: "form_submitted",
+        event: "form_submission",
         properties,
       });
     },

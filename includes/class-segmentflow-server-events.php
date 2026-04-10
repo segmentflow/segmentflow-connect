@@ -22,8 +22,8 @@ defined( 'ABSPATH' ) || exit;
  * - `user_register`                       -> identify + `user_registered` track
  * - `wp_login`                            -> identify
  * - `wp_insert_comment`                   -> identify + `comment_posted` track
- * - `wpcf7_mail_sent` (CF7)              -> identify + `form_submitted` track
- * - `elementor_pro/forms/new_record`      -> identify + `form_submitted` track
+ * - `wpcf7_mail_sent` (CF7)              -> identify + `form_submission` track
+ * - `elementor_pro/forms/new_record`      -> identify + `form_submission` track
  *
  * All events use fire-and-forget POST to /api/v1/ingest/batch with source: "WordPress".
  */
@@ -275,7 +275,7 @@ class Segmentflow_Server_Events {
 	/**
 	 * Handle the `wpcf7_mail_sent` action (Contact Form 7).
 	 *
-	 * Fires an identify event and a `form_submitted` track event.
+	 * Fires an identify event and a `form_submission` track event.
 	 * Extracts email from common CF7 field names: your-email, email, your_email.
 	 *
 	 * @param object $contact_form The WPCF7_ContactForm instance.
@@ -303,7 +303,7 @@ class Segmentflow_Server_Events {
 	/**
 	 * Handle the `elementor_pro/forms/new_record` action (Elementor Pro).
 	 *
-	 * Fires an identify event and a `form_submitted` track event.
+	 * Fires an identify event and a `form_submission` track event.
 	 * Extracts email from Elementor form fields by type or ID.
 	 *
 	 * @param object $record      The Elementor form record.
@@ -354,7 +354,7 @@ class Segmentflow_Server_Events {
 	/**
 	 * Handle a form submission (shared by CF7 and Elementor handlers).
 	 *
-	 * Merges captured email into the cookie, then sends identify + form_submitted
+	 * Merges captured email into the cookie, then sends identify + form_submission
 	 * track events as a batch.
 	 *
 	 * @param array<string, string> $identity   Identity data from sf_id cookie.
@@ -391,7 +391,7 @@ class Segmentflow_Server_Events {
 			$events[] = $this->build_identify_event( $updated_identity, $traits );
 		}
 
-		// Track form_submitted.
+		// Track form_submission.
 		$properties = [
 			'form_type' => $form_type,
 		];
@@ -402,7 +402,7 @@ class Segmentflow_Server_Events {
 			$properties['form_id'] = $form_id;
 		}
 
-		$events[] = $this->build_track_event( 'form_submitted', $updated_identity, $properties );
+		$events[] = $this->build_track_event( 'form_submission', $updated_identity, $properties );
 
 		$this->send_events( $events );
 	}

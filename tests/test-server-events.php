@@ -495,13 +495,13 @@ class Test_Server_Events extends WP_UnitTestCase {
 		$identity = [ 'a' => 'anon-track-1' ];
 		$result   = $reflection->invoke(
 			$this->server_events,
-			'form_submitted',
+			'form_submission',
 			$identity,
 			[ 'form_type' => 'cf7' ]
 		);
 
 		$this->assertSame( 'track', $result['type'] );
-		$this->assertSame( 'form_submitted', $result['event'] );
+		$this->assertSame( 'form_submission', $result['event'] );
 		$this->assertSame( 'anon-track-1', $result['anonymousId'] );
 		$this->assertArrayNotHasKey( 'userId', $result, 'userId should be omitted when null' );
 	}
@@ -519,7 +519,7 @@ class Test_Server_Events extends WP_UnitTestCase {
 		];
 		$result   = $reflection->invoke(
 			$this->server_events,
-			'form_submitted',
+			'form_submission',
 			$identity,
 			[ 'form_type' => 'cf7' ]
 		);
@@ -574,7 +574,7 @@ class Test_Server_Events extends WP_UnitTestCase {
 
 		$track = $track_reflection->invoke(
 			$this->server_events,
-			'form_submitted',
+			'form_submission',
 			$anonymous_identity,
 			[ 'form_type' => 'cf7' ]
 		);
