@@ -198,7 +198,7 @@ class Segmentflow_WC_Webhooks {
 			static function ( $row ) {
 				return $row->topic;
 			},
-			$results ?: []
+			is_array( $results ) ? $results : []
 		);
 	}
 
@@ -218,6 +218,6 @@ class Segmentflow_WC_Webhooks {
 			)
 		);
 
-		return array_map( 'intval', $results ?: [] );
+		return array_map( 'intval', is_array( $results ) ? $results : [] );
 	}
 }
