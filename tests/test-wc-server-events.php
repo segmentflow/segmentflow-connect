@@ -59,6 +59,7 @@ class Test_WC_Server_Events extends WP_UnitTestCase {
 		// Reset cookie state.
 		Segmentflow_Identity_Cookie::reset_cache();
 		unset( $_COOKIE[ Segmentflow_Identity_Cookie::COOKIE_NAME ] );
+		unset( $_COOKIE['sf_utm'] );
 	}
 
 	/**
@@ -68,6 +69,7 @@ class Test_WC_Server_Events extends WP_UnitTestCase {
 		delete_option( 'segmentflow_write_key' );
 		Segmentflow_Identity_Cookie::reset_cache();
 		unset( $_COOKIE[ Segmentflow_Identity_Cookie::COOKIE_NAME ] );
+		unset( $_COOKIE['sf_utm'] );
 		parent::tear_down();
 	}
 
@@ -314,6 +316,86 @@ class Test_WC_Server_Events extends WP_UnitTestCase {
 		$this->assertArrayNotHasKey( 'userId', $event );
 		$this->assertSame( 'anon-guest-checkout', $event['anonymousId'] );
 
+		$order->delete( true );
+	}
+
+	/**
+	 * Test on_checkout stamps UTM meta from the sf_utm cookie.
+	 */
+	public function test_checkout_stamps_utm_meta_when_cookie_present(): void {
+		$this->set_identity( [ 'a' => 'anon-utm-1' ] );
+
+		$_COOKIE['sf_utm'] = wp_json_encode(
+			[
+				'source'   => 'segmentflow',
+				'medium'   => 'email',
+				'campaign' => 'spring-sale',
+			]
+		);
+
+		$order = wc_create_order();
+		$order->set_billing_email( 'utm@example.com' );
+		$order->save();
+
+		$this->server_events->on_checkout( $order->get_id(), [], $order );
+
+		// Reload to see the persisted meta.
+		$reloaded = wc_get_order( $order->get_id() );
+
+		$this->assertSame( 'segmentflow', $reloaded->get_meta( '_segmentflow_utm_source' ) );
+		$this->assertSame( 'email', $reloaded->get_meta( '_segmentflow_utm_medium' ) );
+		$this->assertSame( 'spring-sale', $reloaded->get_meta( '_segmentflow_utm_campaign' ) );
+
+		// Keys that were not in the cookie should not be stamped.
+		$this->assertSame( '', $reloaded->get_meta( '_segmentflow_utm_content' ) );
+		$this->assertSame( '', $reloaded->get_meta( '_segmentflow_utm_term' ) );
+
+		unset( $_COOKIE['sf_utm'] );
+		$order->delete( true );
+	}
+
+	/**
+	 * Test on_checkout does not stamp UTM meta when cookie is absent.
+	 */
+	public function test_checkout_no_utm_meta_when_cookie_absent(): void {
+		$this->set_identity( [ 'a' => 'anon-utm-2' ] );
+
+		unset( $_COOKIE['sf_utm'] );
+
+		$order = wc_create_order();
+		$order->set_billing_email( 'no-utm@example.com' );
+		$order->save();
+
+		$this->server_events->on_checkout( $order->get_id(), [], $order );
+
+		$reloaded = wc_get_order( $order->get_id() );
+		foreach ( [ 'source', 'medium', 'campaign', 'content', 'term' ] as $key ) {
+			$this->assertSame( '', $reloaded->get_meta( '_segmentflow_utm_' . $key ) );
+		}
+
+		$order->delete( true );
+	}
+
+	/**
+	 * Test that a malformed sf_utm cookie is silently ignored.
+	 */
+	public function test_checkout_ignores_malformed_utm_cookie(): void {
+		$this->set_identity( [ 'a' => 'anon-utm-3' ] );
+
+		$_COOKIE['sf_utm'] = 'not-valid-json{{{';
+
+		$order = wc_create_order();
+		$order->set_billing_email( 'malformed@example.com' );
+		$order->save();
+
+		$this->server_events->on_checkout( $order->get_id(), [], $order );
+
+		$reloaded = wc_get_order( $order->get_id() );
+		foreach ( [ 'source', 'medium', 'campaign', 'content', 'term' ] as $key ) {
+			$this->assertSame( '', $reloaded->get_meta( '_segmentflow_utm_' . $key ) );
+		}
+
+		unset( $_COOKIE['sf_utm'] );
 		$order->delete( true );
 	}
 
