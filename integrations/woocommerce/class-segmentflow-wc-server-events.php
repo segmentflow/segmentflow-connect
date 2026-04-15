@@ -201,6 +201,12 @@ class Segmentflow_WC_Server_Events {
 			}
 		}
 
+		// Stamp UTM first-touch attribution onto the order as meta so the
+		// Segmentflow backend can read it from the webhook payload.  The
+		// `sf_utm` cookie is set client-side by storefront.ts on the
+		// landing page; we read it here at checkout.
+		$this->stamp_utm_meta( $order );
+
 		// Extract billing identity from the order.
 		$billing_email = $order->get_billing_email();
 		$billing_phone = $order->get_billing_phone();
@@ -258,6 +264,57 @@ class Segmentflow_WC_Server_Events {
 		}
 
 		$this->send_event( $event );
+	}
+
+	/**
+	 * UTM cookie name written by storefront.ts.
+	 */
+	const UTM_COOKIE_NAME = 'sf_utm';
+
+	/**
+	 * Allowed UTM keys. Match the five standard UTM parameters.
+	 *
+	 * @var string[]
+	 */
+	private const UTM_KEYS = [ 'source', 'medium', 'campaign', 'content', 'term' ];
+
+	/**
+	 * Stamp UTM first-touch attribution from the `sf_utm` cookie onto the
+	 * order as `_segmentflow_utm_*` meta keys. These meta fields are then
+	 * included automatically in the WC REST / webhook payload and parsed
+	 * by the Segmentflow backend.
+	 *
+	 * Silently no-ops if the cookie is absent or malformed.
+	 *
+	 * @param WC_Order $order The order being processed at checkout.
+	 */
+	private function stamp_utm_meta( WC_Order $order ): void {
+		if ( empty( $_COOKIE[ self::UTM_COOKIE_NAME ] ) ) {
+			return;
+		}
+
+		$raw     = sanitize_text_field( wp_unslash( $_COOKIE[ self::UTM_COOKIE_NAME ] ) );
+		$decoded = json_decode( $raw, true );
+		if ( ! is_array( $decoded ) ) {
+			return;
+		}
+
+		$changed = false;
+		foreach ( self::UTM_KEYS as $key ) {
+			if ( empty( $decoded[ $key ] ) || ! is_string( $decoded[ $key ] ) ) {
+				continue;
+			}
+			$value = sanitize_text_field( $decoded[ $key ] );
+			if ( '' === $value ) {
+				continue;
+			}
+			$order->update_meta_data( '_segmentflow_utm_' . $key, $value );
+			$changed = true;
+		}
+
+		if ( $changed ) {
+			$order->save_meta_data();
+		}
 	}
 
 	/**
