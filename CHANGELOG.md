@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.1.0](https://github.com/segmentflow/segmentflow-connect/compare/v2.0.0...v2.1.0) (2026-04-15)
+
+
+### Features
+
+* **woocommerce:** capture UTM first-touch for order attribution ([60e5c61](https://github.com/segmentflow/segmentflow-connect/commit/60e5c6115455685dc336914197f323c1e7da98a0))
+* **woocommerce:** capture UTM first-touch for order attribution ([ec61e73](https://github.com/segmentflow/segmentflow-connect/commit/ec61e7372468f8cb39776aec941e457ebacfd154))
+
+
+### Bug Fixes
+
+* **ci:** pre-create test DB in MySQL service, skip mysqladmin create ([925eb7f](https://github.com/segmentflow/segmentflow-connect/commit/925eb7fc4e8b2a9970b888206fa02bc695a3f92b))
+* **ci:** unblock PHP lint and test-php workflow ([59d236f](https://github.com/segmentflow/segmentflow-connect/commit/59d236fbdcd05a3a91aca1a1a4871b98266018c2))
+
 ## [2.0.0](https://github.com/segmentflow/segmentflow-connect/compare/v1.5.0...v2.0.0) (2026-04-10)
 
 
