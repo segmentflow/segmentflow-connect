@@ -45,6 +45,14 @@ git push
 
 **Step 3 — merge the release PR.** release-please then auto-creates git tag `vX.Y.Z` and a GitHub release. Do not create tags manually.
 
+**Step 3a — verify the release graduated.** The post-merge release-please run can silently fail the labeling/tagging step (observed failure: `Could not resolve to a node with the global id …` when the action races GitHub's PR propagation). After merging, confirm all three:
+
+- `git tag` shows `vX.Y.Z`
+- `gh release list` shows `vX.Y.Z`
+- `gh pr view <n> --json labels` on the merged PR shows label `autorelease: tagged`
+
+If any are missing, see "Recovery" below before continuing to Step 4.
+
 **Step 4 — deploy to WordPress.org.** Manually dispatch the `Deploy to WordPress.org SVN` workflow (`.github/workflows/deploy.yml`) with the `version` input (e.g. `2.1.1`, no `v` prefix). It checks out tag `vX.Y.Z`, builds via `pnpm build`, and uses `10up/action-wordpress-plugin-deploy` to push to SVN trunk + tag. Requires secrets `WP_ORG_SVN_USERNAME` / `WP_ORG_SVN_PASSWORD`. **Always ask the user before dispatching** — this publishes to the public WordPress.org plugin directory.
 
 ### Hard rules
@@ -54,6 +62,18 @@ git push
 - Never force-push to `main`.
 - Never dispatch the WP.org deploy workflow without explicit user confirmation.
 - The plugin name is `Segmentflow Connect` (preserve existing casing). Do not rebrand text copy.
+
+### Recovery — release-please didn't graduate a merged release PR
+
+Symptom: release-please opens a new PR proposing a version **≤ the current `.release-please-manifest.json`** (e.g. manifest is at `2.1.2` but a PR titled `chore: release v2.1.1` appears). This means a prior release PR merged without getting the `autorelease: tagged` label, so release-please lost track of the last release and is re-scanning all commits since the previous known tag.
+
+**Do not merge that PR.** Recover instead:
+
+1. Identify the merged release PR that never graduated (its files match the current manifest version).
+2. Add the pending label: `gh pr edit <n> --add-label "autorelease: pending"`.
+3. Re-run the post-merge release-please workflow run: `gh run rerun <run-id>` (the run triggered by that PR's merge commit). It will now find the pending PR, create the missing tag + GitHub release, and relabel it `autorelease: tagged`.
+4. Close the bogus release PR and delete its branch: `gh pr close <bogus-n> --delete-branch`.
+5. Verify per Step 3a, then proceed to Step 4.
 
 ### WP.org assets
 
