@@ -10,7 +10,7 @@ x-release-please-end: .
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Connect your WordPress website or WooCommerce store to Segmentflow for AI-powered email marketing, customer segmentation, and revenue attribution.
+AI email marketing for WordPress and WooCommerce — natural-language segments, one-click campaigns, and revenue attribution.
 
 == Description ==
 
