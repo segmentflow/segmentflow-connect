@@ -4,6 +4,13 @@
 
 * Update brand logos to v2
 
+## [2.1.1](https://github.com/segmentflow/segmentflow-connect/compare/v2.1.0...v2.1.1) (2026-04-17)
+
+
+### Maintenance
+
+* release 2.1.1 ([b6ca3d8](https://github.com/segmentflow/segmentflow-connect/commit/b6ca3d8fdecc251c12ebd7abce820bc410b4a603))
+
 ## [2.1.0](https://github.com/segmentflow/segmentflow-connect/compare/v2.0.0...v2.1.0) (2026-04-15)
 
 
