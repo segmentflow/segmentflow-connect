@@ -84,12 +84,12 @@ $segmentflow_platform = Segmentflow_Helper::get_platform();
 <?php else : ?>
 	<?php
 	// Check for logo file: try SVG first, then PNG.
-	$segmentflow_logo_path = SEGMENTFLOW_PATH . 'assets/images/logo.svg';
-	$segmentflow_logo_url  = SEGMENTFLOW_URL . 'assets/images/logo.svg';
+	$segmentflow_logo_path = SEGMENTFLOW_PATH . 'assets/images/logo-horizontal.svg';
+	$segmentflow_logo_url  = SEGMENTFLOW_URL . 'assets/images/logo-horizontal.svg';
 
 	if ( ! file_exists( $segmentflow_logo_path ) ) {
-		$segmentflow_logo_path = SEGMENTFLOW_PATH . 'assets/images/logo.png';
-		$segmentflow_logo_url  = SEGMENTFLOW_URL . 'assets/images/logo.png';
+		$segmentflow_logo_path = SEGMENTFLOW_PATH . 'assets/images/logo-horizontal.png';
+		$segmentflow_logo_url  = SEGMENTFLOW_URL . 'assets/images/logo-horizontal.png';
 	}
 
 	if ( file_exists( $segmentflow_logo_path ) ) :

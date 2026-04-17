@@ -135,6 +135,9 @@ screen.
 
 == Changelog ==
 
+= Unreleased =
+* Update brand logos to v2
+
 = 1.0.6 =
 * Add dedicated Forms tab with site URL copy button, dashboard links, setup guide, and testing tip
 * Remove Lead Magnets & Forms row from Connection tab (moved to Forms tab)

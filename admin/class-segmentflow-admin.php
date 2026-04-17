@@ -55,8 +55,8 @@ class Segmentflow_Admin {
 		// Use a custom icon for the sidebar menu if it exists (SVG preferred, PNG fallback).
 		$icon = 'dashicons-email-alt';
 
-		$svg_path = SEGMENTFLOW_PATH . 'assets/images/icon.svg';
-		$png_path = SEGMENTFLOW_PATH . 'assets/images/icon.png';
+		$svg_path = SEGMENTFLOW_PATH . 'assets/images/mark-only.svg';
+		$png_path = SEGMENTFLOW_PATH . 'assets/images/mark-only.png';
 
 		if ( file_exists( $svg_path ) ) {
 			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- Local file read.
@@ -66,7 +66,7 @@ class Segmentflow_Admin {
 				$icon = 'data:image/svg+xml;base64,' . base64_encode( $svg_content );
 			}
 		} elseif ( file_exists( $png_path ) ) {
-			$icon = SEGMENTFLOW_URL . 'assets/images/icon.png';
+			$icon = SEGMENTFLOW_URL . 'assets/images/mark-only.png';
 		}
 
 		add_menu_page(
