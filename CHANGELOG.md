@@ -4,6 +4,13 @@
 
 * Update brand logos to v2
 
+## [2.1.2](https://github.com/segmentflow/segmentflow-connect/compare/v2.1.1...v2.1.2) (2026-04-17)
+
+
+### Bug Fixes
+
+* **readme:** trim short description to stay under WP.org 150-char limit ([a45b607](https://github.com/segmentflow/segmentflow-connect/commit/a45b6073b9ca14f885717cf315525a19a91f32aa))
+
 ## [2.1.1](https://github.com/segmentflow/segmentflow-connect/compare/v2.1.0...v2.1.1) (2026-04-17)
 
 
