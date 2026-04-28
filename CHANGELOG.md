@@ -4,6 +4,13 @@
 
 * Update brand logos to v2
 
+## [2.2.0](https://github.com/segmentflow/segmentflow-connect/compare/v2.1.2...v2.2.0) (2026-04-28)
+
+
+### Features
+
+* **woocommerce:** emit checkout_started, product_viewed, cart_viewed ([0521b7c](https://github.com/segmentflow/segmentflow-connect/commit/0521b7c2c270c56da3f4d5e3b21f60c801f58da7))
+
 ## [2.1.2](https://github.com/segmentflow/segmentflow-connect/compare/v2.1.1...v2.1.2) (2026-04-17)
 
 
