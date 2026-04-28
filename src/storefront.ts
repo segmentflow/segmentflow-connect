@@ -76,6 +76,74 @@ function writeUtmCookie(utm: Utm): void {
   writeUtmCookie(incoming);
 })();
 
+// ---------- WooCommerce page-view tracking ----------
+//
+// The PHP layer (class-segmentflow-wc-tracking.php) injects window.__sf_wc
+// with the current page type and contextual data. Fire the corresponding
+// track events so the Abandoned Cart / view-based segment templates work
+// for WooCommerce stores. Order events are handled server-to-server via
+// the WC REST webhook and are NOT fired from the client.
+//
+// Client-side (rather than PHP) because page caches (WP Rocket, LiteSpeed,
+// hosted WP) cache product/cart/checkout HTML for guests — server-side
+// fires would be suppressed. Trade-off: ad-blocker users (~10–15%) miss
+// these events. Order events stay 100% covered via the webhook path.
+
+function fireWhenSdkReady(callback: (sdk: NonNullable<Window["segmentflow"]>) => void): void {
+  if (window.segmentflow) {
+    callback(window.segmentflow);
+    return;
+  }
+  const start = Date.now();
+  const interval = window.setInterval(() => {
+    if (window.segmentflow) {
+      window.clearInterval(interval);
+      callback(window.segmentflow);
+    } else if (Date.now() - start > 5000) {
+      // SDK never loaded — likely blocked by an ad blocker. Give up silently.
+      window.clearInterval(interval);
+    }
+  }, 100);
+}
+
+(function captureWcPageView(): void {
+  const wc = window.__sf_wc;
+  if (!wc) return;
+
+  // The PHP get_page_type() already excludes the order-received thank-you
+  // page from "checkout", so no extra guard is needed here.
+  switch (wc.page) {
+    case "product": {
+      if (!wc.product) return;
+      fireWhenSdkReady((sdk) =>
+        sdk.track({
+          event: "product_viewed",
+          properties: { ...wc.product, currency: wc.currency },
+        }),
+      );
+      return;
+    }
+    case "cart": {
+      fireWhenSdkReady((sdk) =>
+        sdk.track({
+          event: "cart_viewed",
+          properties: { cart: wc.cart, currency: wc.currency },
+        }),
+      );
+      return;
+    }
+    case "checkout": {
+      fireWhenSdkReady((sdk) =>
+        sdk.track({
+          event: "checkout_started",
+          properties: { cart: wc.cart, currency: wc.currency },
+        }),
+      );
+      return;
+    }
+  }
+})();
+
 // ---------- Contact Form 7 ----------
 
 interface CF7Detail {
