@@ -4,6 +4,13 @@
 
 * Update brand logos to v2
 
+## [2.3.1](https://github.com/segmentflow/segmentflow-connect/compare/v2.3.0...v2.3.1) (2026-04-30)
+
+
+### Bug Fixes
+
+* **admin:** ship mark-only.svg to size admin menu icon correctly ([c3e50c4](https://github.com/segmentflow/segmentflow-connect/commit/c3e50c421a743861bfada77c778aafec26cd7fb1))
+
 ## [2.3.0](https://github.com/segmentflow/segmentflow-connect/compare/v2.2.0...v2.3.0) (2026-04-30)
 
 
