@@ -53,7 +53,9 @@ class Test_Server_Events extends WP_UnitTestCase {
 
 		// Reset cookie state.
 		Segmentflow_Identity_Cookie::reset_cache();
+		Segmentflow_Consent_Cookie::reset_cache();
 		unset( $_COOKIE[ Segmentflow_Identity_Cookie::COOKIE_NAME ] );
+		unset( $_COOKIE[ Segmentflow_Consent_Cookie::COOKIE_NAME ] );
 	}
 
 	/**
@@ -62,7 +64,9 @@ class Test_Server_Events extends WP_UnitTestCase {
 	public function tear_down(): void {
 		delete_option( 'segmentflow_write_key' );
 		Segmentflow_Identity_Cookie::reset_cache();
+		Segmentflow_Consent_Cookie::reset_cache();
 		unset( $_COOKIE[ Segmentflow_Identity_Cookie::COOKIE_NAME ] );
+		unset( $_COOKIE[ Segmentflow_Consent_Cookie::COOKIE_NAME ] );
 		parent::tear_down();
 	}
 
@@ -119,15 +123,30 @@ class Test_Server_Events extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test on_user_register skips without identity cookie.
+	 * Test on_user_register fires events using hook-provided identity
+	 * even when sf_id is absent (#105 fallback path).
 	 */
-	public function test_user_register_skips_without_identity(): void {
-		$user_id = self::factory()->user->create( [ 'user_email' => 'ghost@example.com' ] );
+	public function test_user_register_uses_hook_identity_without_sf_id(): void {
+		// No sf_id cookie set — but the hook provides user_id + email.
+		$user_id = self::factory()->user->create(
+			[ 'user_email' => 'ghost@example.com' ]
+		);
 		$user    = get_userdata( $user_id );
 
 		$this->server_events->on_user_register( $user_id, (array) $user->data );
 
-		$this->assertCount( 0, $this->mock_api->requests );
+		$this->assertCount( 1, $this->mock_api->requests );
+
+		$batch = $this->mock_api->requests[0]['body']['batch'];
+		$this->assertCount( 2, $batch );
+
+		// Identify carries hook-provided userId. anonymousId is omitted
+		// because no sf_id was ever written.
+		$identify = $batch[0];
+		$this->assertSame( 'identify', $identify['type'] );
+		$this->assertArrayNotHasKey( 'anonymousId', $identify );
+		$this->assertStringContainsString( (string) $user_id, $identify['userId'] );
+		$this->assertSame( 'ghost@example.com', $identify['traits']['email'] );
 	}
 
 	// -------------------------------------------------------------------------
@@ -172,15 +191,26 @@ class Test_Server_Events extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test on_login skips without identity cookie.
+	 * Test on_login fires identify with hook-provided identity even when
+	 * sf_id is absent (#105 fallback path).
 	 */
-	public function test_login_skips_without_identity(): void {
-		$user_id = self::factory()->user->create( [ 'user_login' => 'ghostlogin' ] );
+	public function test_login_uses_hook_identity_without_sf_id(): void {
+		$user_id = self::factory()->user->create(
+			[
+				'user_login' => 'ghostlogin',
+				'user_email' => 'ghost@login.com',
+			]
+		);
 		$user    = get_userdata( $user_id );
 
 		$this->server_events->on_login( 'ghostlogin', $user );
 
-		$this->assertCount( 0, $this->mock_api->requests );
+		$this->assertCount( 1, $this->mock_api->requests );
+
+		$identify = $this->mock_api->requests[0]['body']['batch'][0];
+		$this->assertSame( 'identify', $identify['type'] );
+		$this->assertArrayNotHasKey( 'anonymousId', $identify );
+		$this->assertStringContainsString( (string) $user_id, $identify['userId'] );
 	}
 
 	// -------------------------------------------------------------------------
@@ -284,15 +314,53 @@ class Test_Server_Events extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test on_comment skips without identity cookie.
+	 * Test on_comment fires events using the email surfaced by the hook
+	 * when sf_id is absent (#105 fallback path).
 	 */
-	public function test_comment_skips_without_identity(): void {
+	public function test_comment_uses_email_fallback_without_sf_id(): void {
 		$post_id    = self::factory()->post->create();
 		$comment_id = wp_insert_comment(
 			[
 				'comment_post_ID'      => $post_id,
+				'comment_author'       => 'No-Cookie Jane',
 				'comment_author_email' => 'noidentity@example.com',
 				'comment_content'      => 'No cookie comment',
+				'comment_approved'     => 1,
+			]
+		);
+
+		$comment = get_comment( $comment_id );
+		$this->server_events->on_comment( $comment_id, $comment );
+
+		$this->assertCount( 1, $this->mock_api->requests );
+
+		$batch = $this->mock_api->requests[0]['body']['batch'];
+		$this->assertCount( 2, $batch );
+
+		$identify = $batch[0];
+		$this->assertSame( 'identify', $identify['type'] );
+		$this->assertArrayNotHasKey( 'anonymousId', $identify );
+		// Email anchors the userId when no logged-in user / sf_id exists.
+		$this->assertSame( 'noidentity@example.com', $identify['userId'] );
+		$this->assertSame( 'noidentity@example.com', $identify['traits']['email'] );
+
+		$track = $batch[1];
+		$this->assertSame( 'track', $track['type'] );
+		$this->assertSame( 'comment_posted', $track['event'] );
+	}
+
+	/**
+	 * Test that a comment with neither sf_id nor an email is still
+	 * dropped — `resolve_identity` returns null when nothing is available.
+	 */
+	public function test_comment_drops_when_no_identity_available(): void {
+		$post_id    = self::factory()->post->create();
+		$comment_id = wp_insert_comment(
+			[
+				'comment_post_ID'      => $post_id,
+				'comment_author'       => 'Anonymous',
+				'comment_author_email' => '',
+				'comment_content'      => 'Truly anonymous',
 				'comment_approved'     => 1,
 			]
 		);
@@ -599,6 +667,63 @@ class Test_Server_Events extends WP_UnitTestCase {
 	 */
 	private function set_identity( array $data ): void {
 		Segmentflow_Identity_Cookie::reset_cache();
+		// Seed sf_consent so Identity_Cookie::write() is permitted (#105).
+		Segmentflow_Consent_Cookie::reset_cache();
+		Segmentflow_Consent_Cookie::set_consent(
+			[
+				'analytics' => true,
+				'marketing' => true,
+			]
+		);
 		Segmentflow_Identity_Cookie::write( $data );
+	}
+
+	// -------------------------------------------------------------------------
+	// Consent payload stamping (#104 / #105)
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Test that outgoing batches stamp the visitor's consent flags so the
+	 * server-side gate (#104) can record audit + apply marketing-tier
+	 * forwarding decisions.
+	 */
+	public function test_batch_includes_consent_when_cookie_set(): void {
+		$this->set_identity( [ 'a' => 'anon-consent-1' ] );
+		Segmentflow_Consent_Cookie::reset_cache();
+		Segmentflow_Consent_Cookie::set_consent(
+			[
+				'analytics' => true,
+				'marketing' => false,
+			]
+		);
+
+		$user_id = self::factory()->user->create(
+			[ 'user_email' => 'consenting@example.com' ]
+		);
+		$user    = get_userdata( $user_id );
+		$this->server_events->on_user_register( $user_id, (array) $user->data );
+
+		$this->assertCount( 1, $this->mock_api->requests );
+		$body = $this->mock_api->requests[0]['body'];
+		$this->assertArrayHasKey( 'consent', $body );
+		$this->assertTrue( $body['consent']['analytics'] );
+		$this->assertFalse( $body['consent']['marketing'] );
+	}
+
+	/**
+	 * Test that the consent field is omitted when sf_consent is absent —
+	 * the API gate treats no-consent as fully backward-compatible (#104).
+	 */
+	public function test_batch_omits_consent_when_cookie_absent(): void {
+		// No sf_consent — but hook still fires via fallback path.
+		$user_id = self::factory()->user->create(
+			[ 'user_email' => 'no-consent@example.com' ]
+		);
+		$user    = get_userdata( $user_id );
+		$this->server_events->on_user_register( $user_id, (array) $user->data );
+
+		$this->assertCount( 1, $this->mock_api->requests );
+		$body = $this->mock_api->requests[0]['body'];
+		$this->assertArrayNotHasKey( 'consent', $body );
 	}
 }

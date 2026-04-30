@@ -15,13 +15,35 @@ class Test_Identity_Cookie extends WP_UnitTestCase {
 
 	/**
 	 * Reset cookie state before each test.
+	 *
+	 * Most existing tests assume a consenting visitor — they exercise the
+	 * round-trip behavior of `Identity_Cookie::write()` which is gated on
+	 * `sf_consent` since #105. Tests that need to exercise the gate
+	 * itself (no-consent path) call `clear_consent()` explicitly.
 	 */
 	public function set_up(): void {
 		parent::set_up();
 		Segmentflow_Identity_Cookie::reset_cache();
+		Segmentflow_Consent_Cookie::reset_cache();
 		unset( $_COOKIE[ Segmentflow_Identity_Cookie::COOKIE_NAME ] );
 		unset( $_COOKIE[ Segmentflow_Identity_Cookie::LEGACY_ANON_COOKIE ] );
 		unset( $_COOKIE[ Segmentflow_Identity_Cookie::LEGACY_USER_COOKIE ] );
+		unset( $_COOKIE[ Segmentflow_Consent_Cookie::COOKIE_NAME ] );
+		Segmentflow_Consent_Cookie::set_consent(
+			[
+				'analytics' => true,
+				'marketing' => true,
+			]
+		);
+	}
+
+	/**
+	 * Tear-down: clear sf_consent cookie state. Tests that disable consent
+	 * mid-test should reset both caches afterwards via clear_consent().
+	 */
+	private function clear_consent(): void {
+		Segmentflow_Consent_Cookie::reset_cache();
+		unset( $_COOKIE[ Segmentflow_Consent_Cookie::COOKIE_NAME ] );
 	}
 
 	/**
@@ -264,5 +286,85 @@ class Test_Identity_Cookie extends WP_UnitTestCase {
 
 		$unique = array_unique( $ids );
 		$this->assertCount( 10, $unique, 'All generated UUIDs should be unique' );
+	}
+
+	// -------------------------------------------------------------------------
+	// Consent gate tests (#105)
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Test ensure_anonymous_id returns empty string and does not write a
+	 * cookie when sf_consent is absent.
+	 */
+	public function test_ensure_anonymous_id_skips_without_consent(): void {
+		$this->clear_consent();
+		Segmentflow_Identity_Cookie::reset_cache();
+		unset( $_COOKIE[ Segmentflow_Identity_Cookie::COOKIE_NAME ] );
+
+		$result = Segmentflow_Identity_Cookie::ensure_anonymous_id();
+
+		$this->assertSame( '', $result );
+		$this->assertNull( Segmentflow_Identity_Cookie::read() );
+		$this->assertArrayNotHasKey(
+			Segmentflow_Identity_Cookie::COOKIE_NAME,
+			$_COOKIE
+		);
+	}
+
+	/**
+	 * Test that ensure_anonymous_id resumes writing once sf_consent is set.
+	 */
+	public function test_ensure_anonymous_id_writes_after_consent_granted(): void {
+		$this->clear_consent();
+		Segmentflow_Identity_Cookie::reset_cache();
+		unset( $_COOKIE[ Segmentflow_Identity_Cookie::COOKIE_NAME ] );
+
+		// First call: no consent → no cookie.
+		$this->assertSame( '', Segmentflow_Identity_Cookie::ensure_anonymous_id() );
+
+		// Now grant consent and try again.
+		Segmentflow_Consent_Cookie::set_consent(
+			[
+				'analytics' => true,
+				'marketing' => true,
+			]
+		);
+		Segmentflow_Identity_Cookie::reset_cache();
+
+		$anon_id = Segmentflow_Identity_Cookie::ensure_anonymous_id();
+		$this->assertNotEmpty( $anon_id );
+		$this->assertMatchesRegularExpression(
+			'/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/',
+			$anon_id
+		);
+	}
+
+	/**
+	 * Test that write() is a no-op without sf_consent.
+	 */
+	public function test_write_is_noop_without_consent(): void {
+		$this->clear_consent();
+		Segmentflow_Identity_Cookie::reset_cache();
+		unset( $_COOKIE[ Segmentflow_Identity_Cookie::COOKIE_NAME ] );
+
+		Segmentflow_Identity_Cookie::write( [ 'a' => 'should-not-be-written' ] );
+
+		$this->assertNull( Segmentflow_Identity_Cookie::read() );
+	}
+
+	/**
+	 * Test that ensure_anonymous_id reuses an existing sf_id even when
+	 * sf_consent is absent — the gate only blocks new writes, not reads.
+	 */
+	public function test_ensure_anonymous_id_reuses_existing_without_consent(): void {
+		// Seed sf_id with consent first.
+		Segmentflow_Identity_Cookie::write( [ 'a' => 'pre-existing-anon' ] );
+
+		// Now revoke (clear) consent and call ensure.
+		$this->clear_consent();
+		Segmentflow_Identity_Cookie::reset_cache();
+
+		$anon_id = Segmentflow_Identity_Cookie::ensure_anonymous_id();
+		$this->assertSame( 'pre-existing-anon', $anon_id );
 	}
 }

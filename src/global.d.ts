@@ -18,6 +18,14 @@ interface SegmentflowSDK {
   track(params: { event: string; properties?: Record<string, unknown> }): void;
   page(params?: { name?: string; properties?: Record<string, unknown> }): void;
   flush(): void;
+  /** Augmented at runtime by the consent gate. */
+  setConsent?(flags: { analytics: boolean; marketing: boolean }): void;
+}
+
+/** Consent SDK config injected by class-segmentflow-tracking.php. */
+interface SfConsentConfig {
+  writeKey: string;
+  host: string;
 }
 
 /** WooCommerce page data injected by class-segmentflow-wc-tracking.php. */
@@ -78,6 +86,7 @@ declare global {
   interface Window {
     segmentflow?: SegmentflowSDK;
     __sf_wc?: SfWcPageData;
+    __sf_config?: SfConsentConfig;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jQuery types are not available in this project.
     jQuery?: any;
   }

@@ -58,7 +58,9 @@ class Test_WC_Server_Events extends WP_UnitTestCase {
 
 		// Reset cookie state.
 		Segmentflow_Identity_Cookie::reset_cache();
+		Segmentflow_Consent_Cookie::reset_cache();
 		unset( $_COOKIE[ Segmentflow_Identity_Cookie::COOKIE_NAME ] );
+		unset( $_COOKIE[ Segmentflow_Consent_Cookie::COOKIE_NAME ] );
 		unset( $_COOKIE['sf_utm'] );
 	}
 
@@ -68,7 +70,9 @@ class Test_WC_Server_Events extends WP_UnitTestCase {
 	public function tear_down(): void {
 		delete_option( 'segmentflow_write_key' );
 		Segmentflow_Identity_Cookie::reset_cache();
+		Segmentflow_Consent_Cookie::reset_cache();
 		unset( $_COOKIE[ Segmentflow_Identity_Cookie::COOKIE_NAME ] );
+		unset( $_COOKIE[ Segmentflow_Consent_Cookie::COOKIE_NAME ] );
 		unset( $_COOKIE['sf_utm'] );
 		parent::tear_down();
 	}
@@ -400,16 +404,25 @@ class Test_WC_Server_Events extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test on_checkout skips without identity.
+	 * Test on_checkout fires identify with billing email as the fallback
+	 * userId when sf_id is absent (#105 contractual basis path).
 	 */
-	public function test_checkout_skips_without_identity(): void {
+	public function test_checkout_uses_billing_email_without_sf_id(): void {
 		$order = wc_create_order();
 		$order->set_billing_email( 'no-cookie@example.com' );
+		$order->set_billing_first_name( 'No' );
+		$order->set_billing_last_name( 'Cookie' );
 		$order->save();
 
 		$this->server_events->on_checkout( $order->get_id(), [], $order );
 
-		$this->assertCount( 0, $this->mock_api->requests );
+		$this->assertCount( 1, $this->mock_api->requests );
+
+		$identify = $this->mock_api->requests[0]['body']['batch'][0];
+		$this->assertSame( 'identify', $identify['type'] );
+		$this->assertArrayNotHasKey( 'anonymousId', $identify );
+		$this->assertSame( 'no-cookie@example.com', $identify['userId'] );
+		$this->assertSame( 'no-cookie@example.com', $identify['traits']['email'] );
 
 		$order->delete( true );
 	}
@@ -524,6 +537,14 @@ class Test_WC_Server_Events extends WP_UnitTestCase {
 	 */
 	private function set_identity( array $data ): void {
 		Segmentflow_Identity_Cookie::reset_cache();
+		// Seed sf_consent so Identity_Cookie::write() is permitted (#105).
+		Segmentflow_Consent_Cookie::reset_cache();
+		Segmentflow_Consent_Cookie::set_consent(
+			[
+				'analytics' => true,
+				'marketing' => true,
+			]
+		);
 		Segmentflow_Identity_Cookie::write( $data );
 	}
 

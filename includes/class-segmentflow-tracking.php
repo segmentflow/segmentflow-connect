@@ -154,6 +154,13 @@ class Segmentflow_Tracking {
 		$inline_js .= "\t\tconsentRequired: " . wp_json_encode( $consent_required ) . "\n";
 		$inline_js .= "\t};\n\n";
 
+		// Expose the same writeKey/host to the consent gate so it can
+		// flush the queued browse events directly to /api/v1/ingest/batch
+		// after the visitor accepts cookies. The gate boots from this
+		// global on storefront.iife.js load (#105).
+		$inline_js .= "\twindow.__sf_config = { writeKey: " . wp_json_encode( $write_key )
+			. ', host: ' . wp_json_encode( $api_host ) . " };\n\n";
+
 		$inline_js .= "\tvar wpContext = {\n";
 		$inline_js .= "\t\tsiteUrl: " . wp_json_encode( home_url() ) . ",\n";
 		$inline_js .= "\t\tuserId: " . wp_json_encode( $user_id ) . ",\n";

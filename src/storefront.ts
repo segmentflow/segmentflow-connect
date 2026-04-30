@@ -11,6 +11,29 @@
  * @package Segmentflow_Connect
  */
 
+import { installConsentGate, getConsentGate } from "./consent";
+
+// ---------- Consent gate ----------
+//
+// Boot the gate as soon as storefront.iife.js loads. PHP injects
+// `window.__sf_config` ahead of this script, so writeKey/host are
+// already available. Gate operates as a wrapper around the CDN SDK —
+// browse events flow through it; identify and form_submission do not.
+
+if (window.__sf_config) {
+  installConsentGate(window.__sf_config);
+}
+
+function gatedTrack(event: string, properties?: Record<string, unknown>): void {
+  const gate = getConsentGate();
+  if (gate) {
+    gate.track(event, properties);
+    return;
+  }
+  // Fallback for contexts without a config (tests, dev pages without PHP).
+  window.segmentflow?.track({ event, properties });
+}
+
 // ---------- UTM first-touch capture ----------
 //
 // Stamps UTM params from the landing URL into a first-party `sf_utm`
@@ -115,29 +138,18 @@ function fireWhenSdkReady(callback: (sdk: NonNullable<Window["segmentflow"]>) =>
   switch (wc.page) {
     case "product": {
       if (!wc.product) return;
-      fireWhenSdkReady((sdk) =>
-        sdk.track({
-          event: "product_viewed",
-          properties: { ...wc.product, currency: wc.currency },
-        }),
+      fireWhenSdkReady(() =>
+        gatedTrack("product_viewed", { ...wc.product, currency: wc.currency }),
       );
       return;
     }
     case "cart": {
-      fireWhenSdkReady((sdk) =>
-        sdk.track({
-          event: "cart_viewed",
-          properties: { cart: wc.cart, currency: wc.currency },
-        }),
-      );
+      fireWhenSdkReady(() => gatedTrack("cart_viewed", { cart: wc.cart, currency: wc.currency }));
       return;
     }
     case "checkout": {
-      fireWhenSdkReady((sdk) =>
-        sdk.track({
-          event: "checkout_started",
-          properties: { cart: wc.cart, currency: wc.currency },
-        }),
+      fireWhenSdkReady(() =>
+        gatedTrack("checkout_started", { cart: wc.cart, currency: wc.currency }),
       );
       return;
     }

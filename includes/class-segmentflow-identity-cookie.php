@@ -103,9 +103,17 @@ class Segmentflow_Identity_Cookie {
 	 * Uses merge-on-write semantics: reads the existing cookie, merges
 	 * new fields (new fields win on conflict), and re-encodes.
 	 *
+	 * Consent gate (#105): without `sf_consent` we never set a non-essential
+	 * cookie, so this is a no-op when the visitor has not recorded a
+	 * decision. Server-event handlers fall through to hook-provided identity.
+	 *
 	 * @param array<string, string> $fields Key-value pairs to merge (e.g. ['e' => 'email@example.com']).
 	 */
 	public static function write( array $fields ): void {
+		if ( ! Segmentflow_Consent_Cookie::is_set() ) {
+			return;
+		}
+
 		$existing = self::read() ?? [];
 		$merged   = array_merge( $existing, $fields );
 
@@ -146,19 +154,31 @@ class Segmentflow_Identity_Cookie {
 	/**
 	 * Ensure an anonymous ID exists in the cookie.
 	 *
-	 * If the `sf_id` cookie is missing or has no `a` field, generates a
-	 * UUIDv7 and sets the cookie server-side. Server-set cookies are
-	 * immune to Safari ITP 7-day limits.
+	 * Returns the existing `sf_id.a` if present. When absent, refuses
+	 * to write a new cookie unless the visitor has already recorded a
+	 * consent decision (`sf_consent` cookie exists). Returns the empty
+	 * string in that case so callers see a falsy value and skip
+	 * cookie-bound work.
 	 *
 	 * Hooked to `init` at priority 1 (very early).
 	 *
-	 * @return string The anonymous ID (existing or newly generated).
+	 * @return string The anonymous ID, or '' when consent has not yet
+	 *                been recorded.
 	 */
 	public static function ensure_anonymous_id(): string {
 		$data = self::read();
 
 		if ( $data && ! empty( $data['a'] ) ) {
 			return $data['a'];
+		}
+
+		// Consent gate (#105): never set sf_id before the visitor has
+		// recorded a decision. The Browser Consent SDK will trigger a
+		// follow-up request after grant, at which point a fresh UUIDv7
+		// is generated. Refusing here keeps us out of "non-essential
+		// cookie set without consent" territory.
+		if ( ! Segmentflow_Consent_Cookie::is_set() ) {
+			return '';
 		}
 
 		$anonymous_id = self::generate_uuidv7();

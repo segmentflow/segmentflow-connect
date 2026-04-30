@@ -93,7 +93,11 @@ class Segmentflow_WC_Server_Events {
 	 */
 	// phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- Hook callback must accept all parameters from woocommerce_add_to_cart action.
 	public function on_add_to_cart( string $cart_item_key, int $product_id, int $quantity, int $variation_id, array $variation, array $cart_item_data ): void {
-		$identity = $this->get_identity();
+		// `add_to_cart` requires a stable visitor anchor — there is no
+		// hook-supplied email or user ID for guests, so we genuinely
+		// can't fire this event without `sf_id`. Skipping silently
+		// matches Klaviyo and is the safe behavior pre-consent.
+		$identity = $this->resolve_identity( null, null );
 		if ( ! $identity ) {
 			return;
 		}
@@ -132,7 +136,8 @@ class Segmentflow_WC_Server_Events {
 	 * @param object $cart          The WC_Cart instance.
 	 */
 	public function on_remove_from_cart( string $cart_item_key, object $cart ): void {
-		$identity = $this->get_identity();
+		// Same reasoning as `on_add_to_cart`: requires an `sf_id` anchor.
+		$identity = $this->resolve_identity( null, null );
 		if ( ! $identity ) {
 			return;
 		}
@@ -184,11 +189,6 @@ class Segmentflow_WC_Server_Events {
 	 * @param WC_Order $order       The order object.
 	 */
 	public function on_checkout( int $order_id, array $posted_data, WC_Order $order ): void {
-		$identity = $this->get_identity();
-		if ( ! $identity ) {
-			return;
-		}
-
 		// Stamp the WC session ID onto the order as meta so it is included
 		// in the REST API / webhook payload (meta_data array).  This is
 		// the WooCommerce equivalent of Shopify's cart_token — it links
@@ -220,14 +220,17 @@ class Segmentflow_WC_Server_Events {
 		}
 
 		// If the customer has a WP account, update userId in cookie.
-		$customer_id = $order->get_customer_id();
-		if ( $customer_id ) {
-			Segmentflow_Identity_Cookie::write( [ 'u' => 'wc_' . $customer_id ] );
+		$customer_id      = $order->get_customer_id();
+		$user_id_prefixed = $customer_id ? 'wc_' . $customer_id : null;
+		if ( $user_id_prefixed ) {
+			Segmentflow_Identity_Cookie::write( [ 'u' => $user_id_prefixed ] );
 		}
 
-		// Re-read identity after cookie updates to get the most complete picture.
-		$updated_identity = Segmentflow_Identity_Cookie::read();
-		if ( ! $updated_identity ) {
+		// Resolve identity: cookie when consent is granted, billing data
+		// from the order itself when the visitor checked out before
+		// answering the banner.
+		$identity = $this->resolve_identity( $billing_email, $user_id_prefixed );
+		if ( ! $identity ) {
 			return;
 		}
 
@@ -250,17 +253,16 @@ class Segmentflow_WC_Server_Events {
 		}
 
 		$event = [
-			'type'        => 'identify',
-			'userId'      => $updated_identity['u'] ?? null,
-			'anonymousId' => $updated_identity['a'],
-			'traits'      => $traits,
-			'source'      => self::EVENT_SOURCE,
-			'timestamp'   => gmdate( 'c' ),
+			'type'      => 'identify',
+			'traits'    => $traits,
+			'source'    => self::EVENT_SOURCE,
+			'timestamp' => gmdate( 'c' ),
 		];
-
-		// Remove null userId to keep payload clean.
-		if ( null === $event['userId'] ) {
-			unset( $event['userId'] );
+		if ( ! empty( $identity['a'] ) ) {
+			$event['anonymousId'] = $identity['a'];
+		}
+		if ( ! empty( $identity['u'] ) ) {
+			$event['userId'] = $identity['u'];
 		}
 
 		$this->send_event( $event );
@@ -318,49 +320,79 @@ class Segmentflow_WC_Server_Events {
 	}
 
 	/**
-	 * Read identity from the sf_id cookie.
+	 * Resolve identity for a server-fired event.
 	 *
-	 * Returns null if the cookie is missing or has no anonymous ID,
-	 * which means the visitor is unidentifiable. Events are silently
-	 * dropped in this case (same behavior as Klaviyo).
+	 * Cart events (add/remove) need the `sf_id` anchor since the only
+	 * available identity at those hooks is anonymous browse identity.
+	 * Checkout has explicit billing data, so callers pass the email and
+	 * (optionally) prefixed user ID and we fall back to those when the
+	 * cookie is absent — order placement is a contractual basis under
+	 * GDPR Art. 6(1)(b) so it fires regardless of cookie consent.
 	 *
-	 * @return array<string, string>|null Identity data, or null if unavailable.
+	 * @param string|null $hook_email   Email surfaced by the hook (billing email).
+	 * @param string|null $hook_user_id Already-prefixed user ID (e.g. "wc_42").
+	 * @return array<string, string>|null
 	 */
-	private function get_identity(): ?array {
-		$identity = Segmentflow_Identity_Cookie::read();
-
-		if ( ! $identity || empty( $identity['a'] ) ) {
-			return null;
+	private function resolve_identity( ?string $hook_email, ?string $hook_user_id ): ?array {
+		$cookie = Segmentflow_Identity_Cookie::read();
+		if ( $cookie && ! empty( $cookie['a'] ) ) {
+			return $cookie;
 		}
 
-		return $identity;
+		$fallback = [];
+		if ( $hook_user_id ) {
+			$fallback['u'] = $hook_user_id;
+		}
+		if ( $hook_email && is_email( $hook_email ) ) {
+			$fallback['e'] = sanitize_email( $hook_email );
+			if ( empty( $fallback['u'] ) ) {
+				$fallback['u'] = $fallback['e'];
+			}
+		}
+
+		return empty( $fallback['u'] ) ? null : $fallback;
 	}
 
 	/**
 	 * Build a track event payload.
 	 *
-	 * @param string               $event_name Event name (e.g. 'add_to_cart').
-	 * @param array<string, string> $identity   Identity data from sf_id cookie.
+	 * @param string                $event_name Event name (e.g. 'add_to_cart').
+	 * @param array<string, string> $identity   Identity data from sf_id cookie or hook fallback.
 	 * @param array<string, mixed>  $properties Event properties.
 	 * @return array<string, mixed> The event payload.
 	 */
 	private function build_track_event( string $event_name, array $identity, array $properties ): array {
 		$event = [
-			'type'        => 'track',
-			'event'       => $event_name,
-			'userId'      => $identity['u'] ?? null,
-			'anonymousId' => $identity['a'],
-			'properties'  => $properties,
-			'source'      => self::EVENT_SOURCE,
-			'timestamp'   => gmdate( 'c' ),
+			'type'       => 'track',
+			'event'      => $event_name,
+			'properties' => $properties,
+			'source'     => self::EVENT_SOURCE,
+			'timestamp'  => gmdate( 'c' ),
 		];
 
-		// Remove null userId to keep payload clean.
-		if ( null === $event['userId'] ) {
-			unset( $event['userId'] );
+		if ( ! empty( $identity['a'] ) ) {
+			$event['anonymousId'] = $identity['a'];
+		}
+		if ( ! empty( $identity['u'] ) ) {
+			$event['userId'] = $identity['u'];
 		}
 
 		return $event;
+	}
+
+	/**
+	 * Read consent flags currently recorded in `sf_consent`.
+	 *
+	 * @return array{analytics: bool, marketing: bool}|null
+	 */
+	private function get_consent_payload(): ?array {
+		if ( ! Segmentflow_Consent_Cookie::is_set() ) {
+			return null;
+		}
+		return [
+			'analytics' => Segmentflow_Consent_Cookie::has_consent( 'analytics' ),
+			'marketing' => Segmentflow_Consent_Cookie::has_consent( 'marketing' ),
+		];
 	}
 
 	/**
@@ -377,13 +409,20 @@ class Segmentflow_WC_Server_Events {
 			return;
 		}
 
+		$payload = [
+			'writeKey' => $write_key,
+			'batch'    => [ $event ],
+		];
+
+		$consent = $this->get_consent_payload();
+		if ( null !== $consent ) {
+			$payload['consent'] = $consent;
+		}
+
 		$this->api->request(
 			'POST',
 			'/api/v1/ingest/batch',
-			[
-				'writeKey' => $write_key,
-				'batch'    => [ $event ],
-			],
+			$payload,
 			[],
 			[ 'blocking' => false ]
 		);

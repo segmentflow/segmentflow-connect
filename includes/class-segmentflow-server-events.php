@@ -97,11 +97,6 @@ class Segmentflow_Server_Events {
 	 */
 	// phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- Hook callback must accept all parameters from user_register action.
 	public function on_user_register( int $user_id, array $userdata ): void {
-		$identity = $this->get_identity();
-		if ( ! $identity ) {
-			return;
-		}
-
 		$user = get_userdata( $user_id );
 		if ( ! $user ) {
 			return;
@@ -110,16 +105,15 @@ class Segmentflow_Server_Events {
 		$email            = $user->user_email;
 		$user_id_prefixed = $this->get_prefixed_user_id( $user_id );
 
-		// Merge identity into cookie.
+		// Merge identity into cookie (no-op without consent — see Identity_Cookie::write).
 		$cookie_fields = [ 'u' => $user_id_prefixed ];
 		if ( $email ) {
 			$cookie_fields['e'] = $email;
 		}
 		Segmentflow_Identity_Cookie::write( $cookie_fields );
 
-		// Re-read identity after cookie update.
-		$updated_identity = Segmentflow_Identity_Cookie::read();
-		if ( ! $updated_identity ) {
+		$identity = $this->resolve_identity( $email, $user_id_prefixed );
+		if ( ! $identity ) {
 			return;
 		}
 
@@ -135,10 +129,10 @@ class Segmentflow_Server_Events {
 		// Send identify + track as a batch.
 		$this->send_events(
 			[
-				$this->build_identify_event( $updated_identity, $traits ),
+				$this->build_identify_event( $identity, $traits ),
 				$this->build_track_event(
 					'user_registered',
-					$updated_identity,
+					$identity,
 					[
 						'user_id' => $user_id,
 						'email'   => $email,
@@ -159,24 +153,18 @@ class Segmentflow_Server_Events {
 	 * @param WP_User $user       The WP_User object.
 	 */
 	public function on_login( string $user_login, WP_User $user ): void {
-		$identity = $this->get_identity();
-		if ( ! $identity ) {
-			return;
-		}
-
 		$email            = $user->user_email;
 		$user_id_prefixed = $this->get_prefixed_user_id( $user->ID );
 
-		// Merge identity into cookie.
+		// Merge identity into cookie (no-op without consent).
 		$cookie_fields = [ 'u' => $user_id_prefixed ];
 		if ( $email ) {
 			$cookie_fields['e'] = $email;
 		}
 		Segmentflow_Identity_Cookie::write( $cookie_fields );
 
-		// Re-read identity after cookie update.
-		$updated_identity = Segmentflow_Identity_Cookie::read();
-		if ( ! $updated_identity ) {
+		$identity = $this->resolve_identity( $email, $user_id_prefixed );
+		if ( ! $identity ) {
 			return;
 		}
 
@@ -189,7 +177,7 @@ class Segmentflow_Server_Events {
 			$traits['last_name'] = $user->last_name;
 		}
 
-		$this->send_event( $this->build_identify_event( $updated_identity, $traits ) );
+		$this->send_event( $this->build_identify_event( $identity, $traits ) );
 	}
 
 	/**
@@ -220,28 +208,23 @@ class Segmentflow_Server_Events {
 			return;
 		}
 
-		$identity = $this->get_identity();
-		if ( ! $identity ) {
-			return;
-		}
-
 		$email       = $comment->comment_author_email;
 		$author_name = $comment->comment_author;
 
-		// Merge email into cookie if present.
+		// Merge email into cookie if present (no-op without consent).
 		if ( $email && is_email( $email ) ) {
 			Segmentflow_Identity_Cookie::set_email( $email );
 		}
 
 		// If comment was by a logged-in user, merge userId too.
-		$comment_user_id = (int) $comment->user_id;
-		if ( $comment_user_id ) {
-			Segmentflow_Identity_Cookie::write( [ 'u' => $this->get_prefixed_user_id( $comment_user_id ) ] );
+		$comment_user_id  = (int) $comment->user_id;
+		$user_id_prefixed = $comment_user_id ? $this->get_prefixed_user_id( $comment_user_id ) : null;
+		if ( $user_id_prefixed ) {
+			Segmentflow_Identity_Cookie::write( [ 'u' => $user_id_prefixed ] );
 		}
 
-		// Re-read identity after cookie update.
-		$updated_identity = Segmentflow_Identity_Cookie::read();
-		if ( ! $updated_identity ) {
+		$identity = $this->resolve_identity( $email, $user_id_prefixed );
+		if ( ! $identity ) {
 			return;
 		}
 
@@ -254,13 +237,13 @@ class Segmentflow_Server_Events {
 			if ( $author_name ) {
 				$traits['name'] = $author_name;
 			}
-			$events[] = $this->build_identify_event( $updated_identity, $traits );
+			$events[] = $this->build_identify_event( $identity, $traits );
 		}
 
 		// Track comment_posted (reuse $post from the guard above).
 		$events[] = $this->build_track_event(
 			'comment_posted',
-			$updated_identity,
+			$identity,
 			[
 				'comment_id' => $comment_id,
 				'post_id'    => $comment->comment_post_ID,
@@ -281,11 +264,6 @@ class Segmentflow_Server_Events {
 	 * @param object $contact_form The WPCF7_ContactForm instance.
 	 */
 	public function on_cf7_submit( object $contact_form ): void {
-		$identity = $this->get_identity();
-		if ( ! $identity ) {
-			return;
-		}
-
 		// Get the submitted form data.
 		$submission = class_exists( 'WPCF7_Submission' ) ? \WPCF7_Submission::get_instance() : null;
 		if ( ! $submission ) {
@@ -297,7 +275,7 @@ class Segmentflow_Server_Events {
 		$form_title  = method_exists( $contact_form, 'title' ) ? $contact_form->title() : '';
 		$form_id     = method_exists( $contact_form, 'id' ) ? $contact_form->id() : 0;
 
-		$this->handle_form_submission( $identity, $email, $form_title, $form_id, 'cf7', $posted_data );
+		$this->handle_form_submission( $email, $form_title, $form_id, 'cf7', $posted_data );
 	}
 
 	/**
@@ -313,11 +291,6 @@ class Segmentflow_Server_Events {
 	 */
 	// phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- Hook callback must accept all parameters.
 	public function on_elementor_submit( object $record, object $ajax_handler ): void {
-		$identity = $this->get_identity();
-		if ( ! $identity ) {
-			return;
-		}
-
 		// Get the form fields.
 		$raw_fields = method_exists( $record, 'get' ) ? $record->get( 'fields' ) : [];
 		$email      = '';
@@ -344,7 +317,7 @@ class Segmentflow_Server_Events {
 			? ( $record->get_form_settings( 'form_name' ) ?? '' )
 			: '';
 
-		$this->handle_form_submission( $identity, $email, $form_name, 0, 'elementor', $form_data );
+		$this->handle_form_submission( $email, $form_name, 0, 'elementor', $form_data );
 	}
 
 	// -------------------------------------------------------------------------
@@ -354,25 +327,23 @@ class Segmentflow_Server_Events {
 	/**
 	 * Handle a form submission (shared by CF7 and Elementor handlers).
 	 *
-	 * Merges captured email into the cookie, then sends identify + form_submission
-	 * track events as a batch.
+	 * Merges captured email into the cookie (no-op without consent), then
+	 * sends identify + form_submission track events as a batch.
 	 *
-	 * @param array<string, string> $identity   Identity data from sf_id cookie.
-	 * @param string                $email      Extracted email (may be empty).
-	 * @param string                $form_title The form title/name.
-	 * @param int                   $form_id    The form ID (0 if unknown).
-	 * @param string                $form_type  Form plugin type ('cf7' or 'elementor').
-	 * @param array<string, mixed>  $form_data  The submitted form data.
+	 * @param string               $email      Extracted email (may be empty).
+	 * @param string               $form_title The form title/name.
+	 * @param int                  $form_id    The form ID (0 if unknown).
+	 * @param string               $form_type  Form plugin type ('cf7' or 'elementor').
+	 * @param array<string, mixed> $form_data  The submitted form data.
 	 */
-	private function handle_form_submission( array $identity, string $email, string $form_title, int $form_id, string $form_type, array $form_data ): void {
-		// Merge email into cookie if found.
+	private function handle_form_submission( string $email, string $form_title, int $form_id, string $form_type, array $form_data ): void {
+		// Merge email into cookie if found (no-op without consent).
 		if ( $email && is_email( $email ) ) {
 			Segmentflow_Identity_Cookie::set_email( $email );
 		}
 
-		// Re-read identity after cookie update.
-		$updated_identity = Segmentflow_Identity_Cookie::read();
-		if ( ! $updated_identity ) {
+		$identity = $this->resolve_identity( $email, null );
+		if ( ! $identity ) {
 			return;
 		}
 
@@ -388,7 +359,7 @@ class Segmentflow_Server_Events {
 				$traits['name'] = $name;
 			}
 
-			$events[] = $this->build_identify_event( $updated_identity, $traits );
+			$events[] = $this->build_identify_event( $identity, $traits );
 		}
 
 		// Track form_submission.
@@ -402,7 +373,7 @@ class Segmentflow_Server_Events {
 			$properties['form_id'] = $form_id;
 		}
 
-		$events[] = $this->build_track_event( 'form_submission', $updated_identity, $properties );
+		$events[] = $this->build_track_event( 'form_submission', $identity, $properties );
 
 		$this->send_events( $events );
 	}
@@ -474,44 +445,67 @@ class Segmentflow_Server_Events {
 	}
 
 	/**
-	 * Read identity from the sf_id cookie.
+	 * Resolve identity for a server-fired event.
 	 *
-	 * Returns null if the cookie is missing or has no anonymous ID,
-	 * which means the visitor is unidentifiable. Events are silently
-	 * dropped in this case (same behavior as Klaviyo).
+	 * Prefers the `sf_id` cookie when consent is granted (that's the
+	 * stitching anchor between anonymous browse history and the action
+	 * we're about to record). Falls back to identity supplied by the
+	 * hook itself (form email, WP user ID) when the cookie is absent —
+	 * server hooks for confirmed user actions (login, order, form
+	 * submission) ride on a legitimate-interest / contract basis under
+	 * GDPR Art. 6, so they fire even before the visitor accepts cookies.
 	 *
-	 * @return array<string, string>|null Identity data, or null if unavailable.
+	 * Returns null only when neither path produces a stable identifier
+	 * the API can attach to a profile.
+	 *
+	 * @param string|null $hook_email      Email surfaced by the hook (form, billing, comment).
+	 * @param string|null $hook_user_id    Already-prefixed WP/WC user ID surfaced by the hook.
+	 * @return array<string, string>|null  Identity shaped like the cookie payload (a,u,e,p).
 	 */
-	private function get_identity(): ?array {
-		$identity = Segmentflow_Identity_Cookie::read();
-
-		if ( ! $identity || empty( $identity['a'] ) ) {
-			return null;
+	private function resolve_identity( ?string $hook_email, ?string $hook_user_id ): ?array {
+		$cookie = Segmentflow_Identity_Cookie::read();
+		if ( $cookie && ! empty( $cookie['a'] ) ) {
+			return $cookie;
 		}
 
-		return $identity;
+		// Hook fallback. The API requires either userId or anonymousId,
+		// so we anchor on the prefixed user ID when available, then fall
+		// back to the email address — the only stable identifier left
+		// for an anonymous form/comment submitter.
+		$fallback = [];
+		if ( $hook_user_id ) {
+			$fallback['u'] = $hook_user_id;
+		}
+		if ( $hook_email && is_email( $hook_email ) ) {
+			$fallback['e'] = sanitize_email( $hook_email );
+			if ( empty( $fallback['u'] ) ) {
+				$fallback['u'] = $fallback['e'];
+			}
+		}
+
+		return empty( $fallback['u'] ) ? null : $fallback;
 	}
 
 	/**
 	 * Build an identify event payload.
 	 *
-	 * @param array<string, string> $identity Identity data from sf_id cookie.
+	 * @param array<string, string> $identity Identity data from sf_id cookie or hook fallback.
 	 * @param array<string, mixed>  $traits   User traits (email, name, etc.).
 	 * @return array<string, mixed> The event payload.
 	 */
 	private function build_identify_event( array $identity, array $traits ): array {
 		$event = [
-			'type'        => 'identify',
-			'userId'      => $identity['u'] ?? null,
-			'anonymousId' => $identity['a'],
-			'traits'      => $traits,
-			'source'      => self::EVENT_SOURCE,
-			'timestamp'   => gmdate( 'c' ),
+			'type'      => 'identify',
+			'traits'    => $traits,
+			'source'    => self::EVENT_SOURCE,
+			'timestamp' => gmdate( 'c' ),
 		];
 
-		// Remove null userId to keep payload clean.
-		if ( null === $event['userId'] ) {
-			unset( $event['userId'] );
+		if ( ! empty( $identity['a'] ) ) {
+			$event['anonymousId'] = $identity['a'];
+		}
+		if ( ! empty( $identity['u'] ) ) {
+			$event['userId'] = $identity['u'];
 		}
 
 		return $event;
@@ -521,27 +515,45 @@ class Segmentflow_Server_Events {
 	 * Build a track event payload.
 	 *
 	 * @param string                $event_name Event name (e.g. 'user_registered').
-	 * @param array<string, string> $identity   Identity data from sf_id cookie.
+	 * @param array<string, string> $identity   Identity data from sf_id cookie or hook fallback.
 	 * @param array<string, mixed>  $properties Event properties.
 	 * @return array<string, mixed> The event payload.
 	 */
 	private function build_track_event( string $event_name, array $identity, array $properties ): array {
 		$event = [
-			'type'        => 'track',
-			'event'       => $event_name,
-			'userId'      => $identity['u'] ?? null,
-			'anonymousId' => $identity['a'],
-			'properties'  => $properties,
-			'source'      => self::EVENT_SOURCE,
-			'timestamp'   => gmdate( 'c' ),
+			'type'       => 'track',
+			'event'      => $event_name,
+			'properties' => $properties,
+			'source'     => self::EVENT_SOURCE,
+			'timestamp'  => gmdate( 'c' ),
 		];
 
-		// Remove null userId to keep payload clean.
-		if ( null === $event['userId'] ) {
-			unset( $event['userId'] );
+		if ( ! empty( $identity['a'] ) ) {
+			$event['anonymousId'] = $identity['a'];
+		}
+		if ( ! empty( $identity['u'] ) ) {
+			$event['userId'] = $identity['u'];
 		}
 
 		return $event;
+	}
+
+	/**
+	 * Read consent flags currently recorded in `sf_consent`. Returns
+	 * null when the visitor has not yet decided — the API's own gate
+	 * treats absent consent as "fully backward-compatible" so server
+	 * events keep flowing while the banner is still up.
+	 *
+	 * @return array{analytics: bool, marketing: bool}|null
+	 */
+	private function get_consent_payload(): ?array {
+		if ( ! Segmentflow_Consent_Cookie::is_set() ) {
+			return null;
+		}
+		return [
+			'analytics' => Segmentflow_Consent_Cookie::has_consent( 'analytics' ),
+			'marketing' => Segmentflow_Consent_Cookie::has_consent( 'marketing' ),
+		];
 	}
 
 	/**
@@ -569,13 +581,23 @@ class Segmentflow_Server_Events {
 			return;
 		}
 
+		$payload = [
+			'writeKey' => $write_key,
+			'batch'    => $events,
+		];
+
+		// Attach consent flags so the server-side gate (#104) records the
+		// audit trail and skips marketing-tier forwarding when the visitor
+		// has explicitly revoked it.
+		$consent = $this->get_consent_payload();
+		if ( null !== $consent ) {
+			$payload['consent'] = $consent;
+		}
+
 		$this->api->request(
 			'POST',
 			'/api/v1/ingest/batch',
-			[
-				'writeKey' => $write_key,
-				'batch'    => $events,
-			],
+			$payload,
 			[],
 			[ 'blocking' => false ]
 		);

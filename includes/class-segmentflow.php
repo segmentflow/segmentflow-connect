@@ -42,6 +42,7 @@ class Segmentflow {
 		// ALWAYS: core classes.
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-helper.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-options.php';
+		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-consent-cookie.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-identity-cookie.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-tracking.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-auth.php';
