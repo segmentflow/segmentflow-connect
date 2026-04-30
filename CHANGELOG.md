@@ -4,6 +4,13 @@
 
 * Update brand logos to v2
 
+## [2.3.0](https://github.com/segmentflow/segmentflow-connect/compare/v2.2.0...v2.3.0) (2026-04-30)
+
+
+### Features
+
+* **consent:** cookie-consent gate for ingest + identity (closes [#105](https://github.com/segmentflow/segmentflow-connect/issues/105)) ([b15b0ff](https://github.com/segmentflow/segmentflow-connect/commit/b15b0ffb63edcaedb5ac1ea3ae7f09fb3386f16a))
+
 ## [2.2.0](https://github.com/segmentflow/segmentflow-connect/compare/v2.1.2...v2.2.0) (2026-04-28)
 
 
