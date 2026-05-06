@@ -136,6 +136,13 @@ screen.
 == Changelog ==
 
 = Unreleased =
+* Add HMAC-authenticated discount endpoints under `/wp-json/segmentflow/v1/discounts` so the Segmentflow backend can manage WooCommerce coupons through a versioned plugin contract:
+  * `POST /` — create a percentage coupon
+  * `GET /by-code/{code}` — fetch by code
+  * `GET /{providerId}` — fetch by ID
+  * `DELETE /{providerId}` — hard-delete
+  * `GET /redemptions?since=...` — list orders that used a coupon since a cursor
+  Authentication uses the existing webhook secret with `X-Segmentflow-Timestamp` and `X-Segmentflow-Signature` headers. Older plugin installs without these endpoints respond 404; the Segmentflow backend will surface a "plugin update required" message until the merchant updates.
 * Update brand logos to v2
 
 = 1.0.6 =

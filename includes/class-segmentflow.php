@@ -61,6 +61,7 @@ class Segmentflow {
 			require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-helper.php';
 			require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-server-events.php';
 			require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-webhooks.php';
+			require_once SEGMENTFLOW_PATH . 'integrations/woocommerce/class-segmentflow-wc-discounts.php';
 		}
 
 		// FUTURE: Contact Form 7
@@ -140,6 +141,12 @@ class Segmentflow {
 			if ( $options->is_connected() && $options->get( 'webhook_secret' ) ) {
 				$wc_webhooks = new Segmentflow_WC_Webhooks( $options );
 				add_action( 'admin_init', [ $wc_webhooks, 'register_webhooks' ] );
+
+				// Inbound HMAC-authenticated discount endpoints. Registered when
+				// the plugin is connected so unauthenticated installs don't
+				// expose any discount surface.
+				$wc_discounts = new Segmentflow_WC_Discounts( $options );
+				$wc_discounts->register_hooks();
 			}
 		}
 	}
