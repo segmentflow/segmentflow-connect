@@ -4,6 +4,13 @@
 
 * Update brand logos to v2
 
+## [2.4.0](https://github.com/segmentflow/segmentflow-connect/compare/v2.3.1...v2.4.0) (2026-05-06)
+
+
+### Features
+
+* **woocommerce:** add HMAC-authenticated discount REST endpoints ([f9b89b8](https://github.com/segmentflow/segmentflow-connect/commit/f9b89b8a878872dc97870f484561fff80a825b63))
+
 ## [2.3.1](https://github.com/segmentflow/segmentflow-connect/compare/v2.3.0...v2.3.1) (2026-04-30)
 
 
