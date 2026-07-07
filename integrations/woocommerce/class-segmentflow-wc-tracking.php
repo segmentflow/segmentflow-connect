@@ -103,6 +103,7 @@ class Segmentflow_WC_Tracking {
 			'currency'   => function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : null,
 			'cart_hash'  => $cart_hash,
 			'session_id' => $session_id,
+			// Language preference for SDK identify — not billing/shipping country.
 			'locale'     => Segmentflow_WC_Helper::resolve_locale( $user_id ),
 		];
 

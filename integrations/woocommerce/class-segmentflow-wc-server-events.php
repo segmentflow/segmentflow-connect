@@ -339,7 +339,9 @@ class Segmentflow_WC_Server_Events {
 	/**
 	 * Stamp the resolved request locale onto the order as `_segmentflow_locale`.
 	 *
-	 * Idempotent: does not overwrite an existing non-empty value or write empty data.
+	 * Segmentflow reads this meta on order webhooks/sync to populate the `locale`
+	 * profile property. Idempotent: does not overwrite an existing non-empty value
+	 * or write empty data.
 	 *
 	 * @param WC_Order $order The order being processed at checkout.
 	 */

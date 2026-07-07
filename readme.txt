@@ -35,7 +35,7 @@ When WooCommerce is active, Segmentflow Connect automatically enables additional
 
 * **Automatic data sync** -- Customers, orders, and products sync to Segmentflow
 * **Real-time webhooks** -- New orders, customer updates, and product changes are sent instantly
-* **Cart context** -- Cart hash, currency, and WooCommerce customer ID enrichment
+* **Cart context** -- Cart hash, currency, WooCommerce customer ID, and checkout language (`locale`) enrichment
 * **Pre-built segments** -- 11 ready-to-use customer segments (Repeat Customers, Churning Customers, etc.)
 * **Revenue attribution** -- Track which email campaigns drive revenue
 
@@ -73,7 +73,13 @@ Yes. Sign up for free at [segmentflow.ai](https://segmentflow.ai).
 
 = What data is synced? =
 
-On plain WordPress: page views and logged-in user identity. With WooCommerce: customer profiles (name, email, address), order history (items, totals, status), and product catalog (name, images, prices). No sensitive payment information is transmitted.
+On plain WordPress: page views and logged-in user identity. With WooCommerce: customer profiles (name, email, address, language preference), order history (items, totals, status, checkout locale), and product catalog (name, images, prices). No sensitive payment information is transmitted.
+
+= How is customer language tracked? =
+
+Segmentflow stores checkout/browsing language as the `locale` profile property for segmentation and localized campaigns. This is separate from billing/shipping country (`country_code`).
+
+The plugin resolves the active WordPress locale at checkout (`determine_locale()` → `get_user_locale()` → `get_locale()`), stamps it on the order as `_segmentflow_locale`, and exposes the same value to the storefront SDK as `context.locale` in `window.__segmentflow_integration_context`. Segmentflow normalizes values to BCP-47 style (for example `ja` → `ja-JP`). Language is never inferred from billing or shipping country.
 
 = Does this plugin slow down my site? =
 
@@ -100,7 +106,7 @@ This SDK collects page view events and, for logged-in users, sends their
 WordPress user ID and email address to Segmentflow for visitor identification.
 
 When WooCommerce is active, additional data is included: WooCommerce customer ID,
-cart hash, and store currency.
+cart hash, store currency, and the resolved checkout/browse locale (`context.locale`).
 
 The "Require Consent" setting can be enabled to prevent tracking until the
 visitor has given consent via your cookie consent solution.
