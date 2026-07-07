@@ -48,5 +48,6 @@ class Test_Tracking_WooCommerce extends WP_UnitTestCase {
 		$context = apply_filters( 'segmentflow_tracking_context', [] );
 		$this->assertArrayHasKey( 'context', $context );
 		$this->assertArrayHasKey( 'currency', $context['context'] );
+		$this->assertArrayHasKey( 'locale', $context['context'] );
 	}
 }

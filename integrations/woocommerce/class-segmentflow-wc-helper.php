@@ -17,6 +17,64 @@ defined( 'ABSPATH' ) || exit;
 class Segmentflow_WC_Helper {
 
 	/**
+	 * Order meta key for the checkout/request locale stamped at purchase time.
+	 */
+	const LOCALE_META_KEY = '_segmentflow_locale';
+
+	/**
+	 * Resolve the active WordPress locale for the current request.
+	 *
+	 * Priority:
+	 * 1. Current checkout/request locale via determine_locale().
+	 * 2. Logged-in user locale via get_user_locale().
+	 * 3. Site default via get_locale().
+	 *
+	 * Never infers language from billing/shipping country.
+	 *
+	 * @param int|null $user_id Optional WordPress user ID for the user-locale fallback.
+	 * @return string Sanitized locale string (e.g. en_US, ja), or empty when unavailable.
+	 */
+	public static function resolve_locale( ?int $user_id = null ): string {
+		$locale = '';
+
+		if ( function_exists( 'determine_locale' ) ) {
+			$locale = determine_locale();
+		}
+
+		if ( '' === self::sanitize_locale( $locale ) && null !== $user_id && $user_id > 0 && function_exists( 'get_user_locale' ) ) {
+			$locale = get_user_locale( $user_id );
+		}
+
+		if ( '' === self::sanitize_locale( $locale ) ) {
+			$locale = get_locale();
+		}
+
+		return self::sanitize_locale( $locale );
+	}
+
+	/**
+	 * Sanitize a WordPress locale string.
+	 *
+	 * Preserves common formats like en_US and ja-JP while stripping unsafe characters.
+	 *
+	 * @param string $locale Raw locale value.
+	 * @return string Sanitized locale, or empty when invalid.
+	 */
+	public static function sanitize_locale( string $locale ): string {
+		$locale = sanitize_text_field( $locale );
+		if ( '' === $locale ) {
+			return '';
+		}
+
+		$locale = preg_replace( '/[^a-zA-Z0-9_-]/', '', $locale );
+		if ( ! is_string( $locale ) || '' === $locale ) {
+			return '';
+		}
+
+		return $locale;
+	}
+
+	/**
 	 * Get the WooCommerce version.
 	 *
 	 * @return string|null The WC version string, or null if not available.

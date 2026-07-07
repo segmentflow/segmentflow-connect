@@ -95,11 +95,15 @@ class Segmentflow_WC_Tracking {
 			}
 		}
 
+		$current_user_id = get_current_user_id();
+		$user_id         = $current_user_id > 0 ? $current_user_id : null;
+
 		$context['context'] = [
 			'store_url'  => home_url(),
 			'currency'   => function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : null,
 			'cart_hash'  => $cart_hash,
 			'session_id' => $session_id,
+			'locale'     => Segmentflow_WC_Helper::resolve_locale( $user_id ),
 		];
 
 		return $context;
