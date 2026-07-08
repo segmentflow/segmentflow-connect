@@ -75,6 +75,9 @@ class Segmentflow_WC_Server_Events {
 		// Identity stitching at checkout: merges billing email/phone into cookie
 		// and sends identify to bridge anonymous browsing to known customer.
 		add_action( 'woocommerce_checkout_order_processed', [ $this, 'on_checkout' ], 10, 3 );
+
+		// Blocks / Store API checkout uses a separate hook from classic shortcode checkout.
+		add_action( 'woocommerce_store_api_checkout_order_processed', [ $this, 'on_blocks_checkout' ], 10, 1 );
 	}
 
 	/**
@@ -206,6 +209,7 @@ class Segmentflow_WC_Server_Events {
 		// `sf_utm` cookie is set client-side by storefront.ts on the
 		// landing page; we read it here at checkout.
 		$this->stamp_utm_meta( $order );
+		$this->stamp_locale_meta( $order );
 
 		// Extract billing identity from the order.
 		$billing_email = $order->get_billing_email();
@@ -269,6 +273,19 @@ class Segmentflow_WC_Server_Events {
 	}
 
 	/**
+	 * Handle the `woocommerce_store_api_checkout_order_processed` action.
+	 *
+	 * Blocks checkout does not always fire `woocommerce_checkout_order_processed`,
+	 * so locale meta is stamped here as well. Identity stitching remains on the
+	 * classic hook only.
+	 *
+	 * @param WC_Order $order The order object.
+	 */
+	public function on_blocks_checkout( WC_Order $order ): void {
+		$this->stamp_locale_meta( $order );
+	}
+
+	/**
 	 * UTM cookie name written by storefront.ts.
 	 */
 	const UTM_COOKIE_NAME = 'sf_utm';
@@ -317,6 +334,32 @@ class Segmentflow_WC_Server_Events {
 		if ( $changed ) {
 			$order->save_meta_data();
 		}
+	}
+
+	/**
+	 * Stamp the resolved request locale onto the order as `_segmentflow_locale`.
+	 *
+	 * Segmentflow reads this meta on order webhooks/sync to populate the `locale`
+	 * profile property. Idempotent: does not overwrite an existing non-empty value
+	 * or write empty data.
+	 *
+	 * @param WC_Order $order The order being processed at checkout.
+	 */
+	private function stamp_locale_meta( WC_Order $order ): void {
+		$existing = $order->get_meta( Segmentflow_WC_Helper::LOCALE_META_KEY );
+		if ( is_string( $existing ) && '' !== $existing ) {
+			return;
+		}
+
+		$customer_id = $order->get_customer_id();
+		$user_id     = $customer_id > 0 ? $customer_id : null;
+		$locale      = Segmentflow_WC_Helper::resolve_locale( $user_id );
+		if ( '' === $locale ) {
+			return;
+		}
+
+		$order->update_meta_data( Segmentflow_WC_Helper::LOCALE_META_KEY, $locale );
+		$order->save_meta_data();
 	}
 
 	/**
