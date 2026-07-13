@@ -47,7 +47,7 @@ class Test_WC_Locale extends WP_UnitTestCase {
 
 		$this->options       = new Segmentflow_Options();
 		$this->mock_api      = new Mock_Segmentflow_API( $this->options );
-		$this->server_events = new Segmentflow_WC_Server_Events( $this->options, $this->mock_api );
+		$this->server_events = new Segmentflow_WC_Server_Events( $this->options, $this->mock_api, new Segmentflow_Ingest_Client( $this->options, $this->mock_api ) );
 
 		Segmentflow_Identity_Cookie::reset_cache();
 		Segmentflow_Consent_Cookie::reset_cache();

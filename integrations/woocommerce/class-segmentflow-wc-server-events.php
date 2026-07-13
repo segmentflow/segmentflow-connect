@@ -46,14 +46,23 @@ class Segmentflow_WC_Server_Events {
 	private Segmentflow_API $api;
 
 	/**
+	 * Identified ingest client.
+	 *
+	 * @var Segmentflow_Ingest_Client
+	 */
+	private Segmentflow_Ingest_Client $ingest_client;
+
+	/**
 	 * Constructor.
 	 *
-	 * @param Segmentflow_Options $options The options instance.
-	 * @param Segmentflow_API     $api     The API client instance.
+	 * @param Segmentflow_Options       $options        The options instance.
+	 * @param Segmentflow_API           $api            The API client instance.
+	 * @param Segmentflow_Ingest_Client $ingest_client  The identified ingest client.
 	 */
-	public function __construct( Segmentflow_Options $options, Segmentflow_API $api ) {
-		$this->options = $options;
-		$this->api     = $api;
+	public function __construct( Segmentflow_Options $options, Segmentflow_API $api, Segmentflow_Ingest_Client $ingest_client ) {
+		$this->options       = $options;
+		$this->api           = $api;
+		$this->ingest_client = $ingest_client;
 	}
 
 	/**

@@ -54,7 +54,7 @@ class Test_WC_Server_Events extends WP_UnitTestCase {
 
 		$this->options       = new Segmentflow_Options();
 		$this->mock_api      = new Mock_Segmentflow_API( $this->options );
-		$this->server_events = new Segmentflow_WC_Server_Events( $this->options, $this->mock_api );
+		$this->server_events = new Segmentflow_WC_Server_Events( $this->options, $this->mock_api, new Segmentflow_Ingest_Client( $this->options, $this->mock_api ) );
 
 		// Reset cookie state.
 		Segmentflow_Identity_Cookie::reset_cache();
@@ -434,7 +434,7 @@ class Test_WC_Server_Events extends WP_UnitTestCase {
 		delete_option( 'segmentflow_write_key' );
 
 		$options       = new Segmentflow_Options();
-		$server_events = new Segmentflow_WC_Server_Events( $options, $this->mock_api );
+		$server_events = new Segmentflow_WC_Server_Events( $options, $this->mock_api, new Segmentflow_Ingest_Client( $options, $this->mock_api ) );
 		$server_events->register_hooks();
 
 		// Verify the hook was NOT added by checking action count.
@@ -445,7 +445,7 @@ class Test_WC_Server_Events extends WP_UnitTestCase {
 	 * Test that register_hooks registers actions when connected.
 	 */
 	public function test_hooks_registered_when_connected(): void {
-		$server_events = new Segmentflow_WC_Server_Events( $this->options, $this->mock_api );
+		$server_events = new Segmentflow_WC_Server_Events( $this->options, $this->mock_api, new Segmentflow_Ingest_Client( $this->options, $this->mock_api ) );
 		$server_events->register_hooks();
 
 		$this->assertSame( 25, has_action( 'woocommerce_add_to_cart', [ $server_events, 'on_add_to_cart' ] ) );
@@ -461,7 +461,7 @@ class Test_WC_Server_Events extends WP_UnitTestCase {
 		$this->set_identity( [ 'a' => 'anon-no-key' ] );
 
 		$options       = new Segmentflow_Options();
-		$server_events = new Segmentflow_WC_Server_Events( $options, $this->mock_api );
+		$server_events = new Segmentflow_WC_Server_Events( $options, $this->mock_api, new Segmentflow_Ingest_Client( $options, $this->mock_api ) );
 
 		$product = $this->create_product( 'No Key Widget', '10.00', 'NOKEY-001' );
 		$server_events->on_add_to_cart( 'cart-key-nokey', $product->get_id(), 1, 0, [], [] );

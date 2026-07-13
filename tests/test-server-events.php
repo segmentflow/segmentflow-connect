@@ -49,7 +49,7 @@ class Test_Server_Events extends WP_UnitTestCase {
 
 		$this->options       = new Segmentflow_Options();
 		$this->mock_api      = new Mock_Segmentflow_API( $this->options );
-		$this->server_events = new Segmentflow_Server_Events( $this->options, $this->mock_api );
+		$this->server_events = new Segmentflow_Server_Events( $this->options, $this->mock_api, new Segmentflow_Ingest_Client( $this->options, $this->mock_api ) );
 
 		// Reset cookie state.
 		Segmentflow_Identity_Cookie::reset_cache();
@@ -410,7 +410,7 @@ class Test_Server_Events extends WP_UnitTestCase {
 		delete_option( 'segmentflow_write_key' );
 
 		$options       = new Segmentflow_Options();
-		$server_events = new Segmentflow_Server_Events( $options, $this->mock_api );
+		$server_events = new Segmentflow_Server_Events( $options, $this->mock_api, new Segmentflow_Ingest_Client( $options, $this->mock_api ) );
 		$server_events->register_hooks();
 
 		$this->assertFalse( has_action( 'user_register', [ $server_events, 'on_user_register' ] ) );
@@ -422,7 +422,7 @@ class Test_Server_Events extends WP_UnitTestCase {
 	 * Test that register_hooks registers core actions when connected.
 	 */
 	public function test_hooks_registered_when_connected(): void {
-		$server_events = new Segmentflow_Server_Events( $this->options, $this->mock_api );
+		$server_events = new Segmentflow_Server_Events( $this->options, $this->mock_api, new Segmentflow_Ingest_Client( $this->options, $this->mock_api ) );
 		$server_events->register_hooks();
 
 		$this->assertSame( 10, has_action( 'user_register', [ $server_events, 'on_user_register' ] ) );
@@ -435,7 +435,7 @@ class Test_Server_Events extends WP_UnitTestCase {
 	 */
 	public function test_cf7_hook_not_registered_without_cf7(): void {
 		// WPCF7_VERSION should not be defined in the test environment.
-		$server_events = new Segmentflow_Server_Events( $this->options, $this->mock_api );
+		$server_events = new Segmentflow_Server_Events( $this->options, $this->mock_api, new Segmentflow_Ingest_Client( $this->options, $this->mock_api ) );
 		$server_events->register_hooks();
 
 		$this->assertFalse( has_action( 'wpcf7_mail_sent', [ $server_events, 'on_cf7_submit' ] ) );
@@ -449,7 +449,7 @@ class Test_Server_Events extends WP_UnitTestCase {
 		$this->set_identity( [ 'a' => 'anon-no-key' ] );
 
 		$options       = new Segmentflow_Options();
-		$server_events = new Segmentflow_Server_Events( $options, $this->mock_api );
+		$server_events = new Segmentflow_Server_Events( $options, $this->mock_api, new Segmentflow_Ingest_Client( $options, $this->mock_api ) );
 
 		$user_id = self::factory()->user->create( [ 'user_email' => 'nokey@example.com' ] );
 		$user    = get_userdata( $user_id );
