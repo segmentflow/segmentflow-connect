@@ -1,37 +1,23 @@
 /**
- * Segmentflow Connect — Storefront Form Tracking
+ * Segmentflow Connect — Storefront bootstrap
  *
- * Listens for form submission events from Contact Form 7 and Elementor Pro,
- * and fires segmentflow.track("form_submission", ...) for each.
- *
- * Loaded via wp_enqueue_script() on all frontend pages where form plugins
- * are active. Uses optional chaining on window.segmentflow in case the
- * SDK is blocked by an ad blocker.
+ * Owns consent wiring, UTM first-touch capture, and page-context bootstrap.
+ * Does NOT emit WooCommerce browse events or browser form submissions —
+ * those are owned by the shared SDK adapter and PHP server hooks.
  *
  * @package Segmentflow_Connect
  */
 
-import { installConsentGate, getConsentGate } from "./consent";
+import { installConsentGate } from "./consent";
 
 // ---------- Consent gate ----------
 //
 // Boot the gate as soon as storefront.iife.js loads. PHP injects
 // `window.__sf_config` ahead of this script, so writeKey/host are
-// already available. Gate operates as a wrapper around the CDN SDK —
-// browse events flow through it; identify and form_submission do not.
+// already available. Gate is permission-only and never creates identity.
 
 if (window.__sf_config) {
   installConsentGate(window.__sf_config);
-}
-
-function gatedTrack(event: string, properties?: Record<string, unknown>): void {
-  const gate = getConsentGate();
-  if (gate) {
-    gate.track(event, properties);
-    return;
-  }
-  // Fallback for contexts without a config (tests, dev pages without PHP).
-  window.segmentflow?.track({ event, properties });
 }
 
 // ---------- UTM first-touch capture ----------
@@ -98,161 +84,3 @@ function writeUtmCookie(utm: Utm): void {
 
   writeUtmCookie(incoming);
 })();
-
-// ---------- WooCommerce page-view tracking ----------
-//
-// The PHP layer (class-segmentflow-wc-tracking.php) injects window.__sf_wc
-// with the current page type and contextual data. Fire the corresponding
-// track events so the Abandoned Cart / view-based segment templates work
-// for WooCommerce stores. Order events are handled server-to-server via
-// the WC REST webhook and are NOT fired from the client.
-//
-// Client-side (rather than PHP) because page caches (WP Rocket, LiteSpeed,
-// hosted WP) cache product/cart/checkout HTML for guests — server-side
-// fires would be suppressed. Trade-off: ad-blocker users (~10–15%) miss
-// these events. Order events stay 100% covered via the webhook path.
-
-function fireWhenSdkReady(callback: (sdk: NonNullable<Window["segmentflow"]>) => void): void {
-  if (window.segmentflow) {
-    callback(window.segmentflow);
-    return;
-  }
-  const start = Date.now();
-  const interval = window.setInterval(() => {
-    if (window.segmentflow) {
-      window.clearInterval(interval);
-      callback(window.segmentflow);
-    } else if (Date.now() - start > 5000) {
-      // SDK never loaded — likely blocked by an ad blocker. Give up silently.
-      window.clearInterval(interval);
-    }
-  }, 100);
-}
-
-(function captureWcPageView(): void {
-  const wc = window.__sf_wc;
-  if (!wc) return;
-
-  // The PHP get_page_type() already excludes the order-received thank-you
-  // page from "checkout", so no extra guard is needed here.
-  switch (wc.page) {
-    case "product": {
-      if (!wc.product) return;
-      fireWhenSdkReady(() =>
-        gatedTrack("product_viewed", { ...wc.product, currency: wc.currency }),
-      );
-      return;
-    }
-    case "cart": {
-      fireWhenSdkReady(() => gatedTrack("cart_viewed", { cart: wc.cart, currency: wc.currency }));
-      return;
-    }
-    case "checkout": {
-      fireWhenSdkReady(() =>
-        gatedTrack("checkout_started", { cart: wc.cart, currency: wc.currency }),
-      );
-      return;
-    }
-  }
-})();
-
-// ---------- Contact Form 7 ----------
-
-interface CF7Detail {
-  contactFormId: number;
-  contactFormTitle?: string;
-  inputs: Array<{ name: string; value: string }>;
-}
-
-document.addEventListener("wpcf7mailsent", ((event: CustomEvent<CF7Detail>) => {
-  const detail = event.detail;
-  if (!detail) return;
-
-  const inputs = detail.inputs || [];
-  const emailInput = inputs.find((i) => i.name.includes("email") || i.name === "your-email");
-  const nameInput = inputs.find((i) => i.name.includes("name") || i.name === "your-name");
-
-  const properties: Record<string, unknown> = {
-    form_id: detail.contactFormId,
-    form_plugin: "contact_form_7",
-    form_title: detail.contactFormTitle || undefined,
-  };
-
-  if (emailInput?.value) {
-    properties.email = emailInput.value;
-    window.segmentflow?.identify({ traits: { email: emailInput.value } });
-  }
-
-  if (nameInput?.value) {
-    properties.name = nameInput.value;
-  }
-
-  window.segmentflow?.track({
-    event: "form_submission",
-    properties,
-  });
-}) as EventListener);
-
-// ---------- Elementor Pro Forms ----------
-
-const $ = window.jQuery;
-if ($) {
-  $(document).ajaxComplete(
-    (
-      _event: unknown,
-      xhr: { status: number; responseJSON?: unknown; responseText?: string },
-      settings: { data?: string },
-    ) => {
-      if (!settings.data) return;
-      if (
-        typeof settings.data !== "string" ||
-        !settings.data.includes("action=elementor_pro_forms_send_form")
-      ) {
-        return;
-      }
-
-      const formData: Record<string, string> = {};
-      try {
-        const params = new URLSearchParams(settings.data);
-        for (const [key, value] of params) {
-          formData[key] = value;
-        }
-      } catch {
-        return;
-      }
-
-      let responseOk = false;
-      try {
-        const json =
-          typeof xhr.responseJSON === "object"
-            ? (xhr.responseJSON as Record<string, unknown>)
-            : (JSON.parse(xhr.responseText || "{}") as Record<string, unknown>);
-        responseOk = json.success === true;
-      } catch {
-        responseOk = xhr.status >= 200 && xhr.status < 300;
-      }
-
-      if (!responseOk) return;
-
-      const emailField = Object.entries(formData).find(
-        ([key, val]) =>
-          (key.startsWith("form_fields[") && val.includes("@")) || key.includes("email"),
-      );
-
-      const properties: Record<string, unknown> = {
-        form_id: formData["form_id"] || formData["post_id"] || undefined,
-        form_plugin: "elementor_pro",
-      };
-
-      if (emailField?.[1]) {
-        properties.email = emailField[1];
-        window.segmentflow?.identify({ traits: { email: emailField[1] } });
-      }
-
-      window.segmentflow?.track({
-        event: "form_submission",
-        properties,
-      });
-    },
-  );
-}
