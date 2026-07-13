@@ -44,14 +44,18 @@ describe("storefront event ownership", () => {
 
 describe("PHP event ownership", () => {
   it("registers PHP form hooks exactly once each", () => {
-    expect(serverEventsSource.match(/wpcf7_mail_sent/g)?.length).toBe(1);
-    expect(serverEventsSource.match(/elementor_pro\/forms\/new_record/g)?.length).toBe(1);
+    expect(serverEventsSource.match(/add_action\(\s*'wpcf7_mail_sent'/g)?.length).toBe(1);
+    expect(
+      serverEventsSource.match(/add_action\(\s*'elementor_pro\/forms\/new_record'/g)?.length,
+    ).toBe(1);
     expect(serverEventsSource).toMatch(/form_submission/);
   });
 
   it("registers server cart mutation hooks exactly once each", () => {
-    expect(wcServerEventsSource.match(/woocommerce_add_to_cart/g)?.length).toBe(1);
-    expect(wcServerEventsSource.match(/woocommerce_cart_item_removed/g)?.length).toBe(1);
+    expect(wcServerEventsSource.match(/add_action\(\s*'woocommerce_add_to_cart'/g)?.length).toBe(1);
+    expect(
+      wcServerEventsSource.match(/add_action\(\s*'woocommerce_cart_item_removed'/g)?.length,
+    ).toBe(1);
   });
 
   it("keeps shared SDK bootstrap and WooCommerce context injection path", () => {
