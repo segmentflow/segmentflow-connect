@@ -95,12 +95,14 @@ class Segmentflow_API {
 	 * @param array<string, string> $headers  Additional headers.
 	 * @param array<string, mixed>  $options  Request options. Supports:
 	 *                                        - 'blocking' (bool): If false, fire-and-forget (default: true).
-	 * @return array{success: bool, data?: array<string, mixed>, error?: string}
+	 *                                        - 'timeout' (float|int): Override request timeout seconds.
+	 * @return array{success: bool, data?: array<string, mixed>, error?: string, status_code?: int}
 	 */
 	public function request( string $method, string $endpoint, array $body = [], array $headers = [], array $options = [] ): array {
 		$url = $this->options->get_api_host() . $endpoint;
 
 		$is_blocking = $options['blocking'] ?? true;
+		$timeout     = $options['timeout'] ?? ( $is_blocking ? 15 : 0.5 );
 
 		$default_headers = [
 			'Content-Type' => 'application/json',
@@ -111,7 +113,7 @@ class Segmentflow_API {
 		$args = [
 			'method'   => strtoupper( $method ),
 			'headers'  => array_merge( $default_headers, $headers ),
-			'timeout'  => $is_blocking ? 15 : 0.5,
+			'timeout'  => $timeout,
 			'blocking' => $is_blocking,
 		];
 
@@ -135,20 +137,23 @@ class Segmentflow_API {
 			];
 		}
 
-		$status_code = wp_remote_retrieve_response_code( $response );
+		$status_code = (int) wp_remote_retrieve_response_code( $response );
 		$body_raw    = wp_remote_retrieve_body( $response );
 		$data        = json_decode( $body_raw, true );
 
 		if ( $status_code >= 200 && $status_code < 300 ) {
 			return [
-				'success' => true,
-				'data'    => is_array( $data ) ? $data : [],
+				'success'     => true,
+				'status_code' => $status_code,
+				'data'        => is_array( $data ) ? $data : [],
 			];
 		}
 
 		return [
-			'success' => false,
-			'error'   => $data['error'] ?? $data['message'] ?? "HTTP {$status_code}",
+			'success'     => false,
+			'status_code' => $status_code,
+			'error'       => $data['error'] ?? $data['message'] ?? "HTTP {$status_code}",
+			'data'        => is_array( $data ) ? $data : [],
 		];
 	}
 }

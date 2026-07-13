@@ -3,10 +3,13 @@
  * Tests for WordPress core server-side events.
  *
  * Tests the Segmentflow_Server_Events class: user_register, wp_login,
- * wp_insert_comment, and form submission handlers.
+ * wp_insert_comment, and form submission handlers under the identified-only
+ * ingest contract.
  *
  * @package Segmentflow_Connect
  */
+
+// phpcs:disable WordPress.WP.CapitalPDangit -- 'wordpress' is a frozen platform/source identifier.
 
 require_once __DIR__ . '/helpers/class-mock-segmentflow-api.php';
 
@@ -32,6 +35,13 @@ class Test_Server_Events extends WP_UnitTestCase {
 	private Mock_Segmentflow_API $mock_api;
 
 	/**
+	 * Identified ingest client.
+	 *
+	 * @var Segmentflow_Ingest_Client
+	 */
+	private Segmentflow_Ingest_Client $ingest_client;
+
+	/**
 	 * The server events instance under test.
 	 *
 	 * @var Segmentflow_Server_Events
@@ -44,17 +54,14 @@ class Test_Server_Events extends WP_UnitTestCase {
 	public function set_up(): void {
 		parent::set_up();
 
-		// Ensure a write key exists so hooks register.
 		update_option( 'segmentflow_write_key', 'test-write-key-456' );
 
 		$this->options       = new Segmentflow_Options();
 		$this->mock_api      = new Mock_Segmentflow_API( $this->options );
-		$this->server_events = new Segmentflow_Server_Events( $this->options, $this->mock_api );
+		$this->ingest_client = new Segmentflow_Ingest_Client( $this->options, $this->mock_api );
+		$this->server_events = new Segmentflow_Server_Events( $this->options, $this->ingest_client );
 
-		// Reset cookie state.
-		Segmentflow_Identity_Cookie::reset_cache();
 		Segmentflow_Consent_Cookie::reset_cache();
-		unset( $_COOKIE[ Segmentflow_Identity_Cookie::COOKIE_NAME ] );
 		unset( $_COOKIE[ Segmentflow_Consent_Cookie::COOKIE_NAME ] );
 	}
 
@@ -63,9 +70,7 @@ class Test_Server_Events extends WP_UnitTestCase {
 	 */
 	public function tear_down(): void {
 		delete_option( 'segmentflow_write_key' );
-		Segmentflow_Identity_Cookie::reset_cache();
 		Segmentflow_Consent_Cookie::reset_cache();
-		unset( $_COOKIE[ Segmentflow_Identity_Cookie::COOKIE_NAME ] );
 		unset( $_COOKIE[ Segmentflow_Consent_Cookie::COOKIE_NAME ] );
 		parent::tear_down();
 	}
@@ -75,11 +80,9 @@ class Test_Server_Events extends WP_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Test on_user_register sends identify + user_registered events.
+	 * Test on_user_register sends ordered identify then user_registered track.
 	 */
 	public function test_user_register_sends_identify_and_track(): void {
-		$this->set_identity( [ 'a' => 'anon-reg-1' ] );
-
 		$user_id = self::factory()->user->create(
 			[
 				'user_email' => 'newuser@example.com',
@@ -93,60 +96,81 @@ class Test_Server_Events extends WP_UnitTestCase {
 
 		$this->assertCount( 1, $this->mock_api->requests );
 
-		$batch = $this->mock_api->requests[0]['body']['batch'];
+		$request = $this->mock_api->requests[0];
+		$batch   = $request['body']['batch'];
 		$this->assertCount( 2, $batch );
 
-		// First event: identify.
+		$prefix   = Segmentflow_Helper::is_woocommerce_active() ? 'wc_' : 'wp_';
+		$expected = $prefix . $user_id;
+
 		$identify = $batch[0];
 		$this->assertSame( 'identify', $identify['type'] );
-		$this->assertSame( 'anon-reg-1', $identify['anonymousId'] );
-		$this->assertSame( 'WordPress', $identify['source'] );
+		$this->assertSame( 'newuser@example.com', $identify['email'] );
+		$this->assertSame( $expected, $identify['userId'] );
+		$this->assertSame( 'wordpress', $identify['source'] );
 		$this->assertSame( 'newuser@example.com', $identify['traits']['email'] );
 		$this->assertSame( 'Alice', $identify['traits']['first_name'] );
 		$this->assertSame( 'Smith', $identify['traits']['last_name'] );
-		// userId should be set (wp_ prefix since WC is not active in test env).
-		$this->assertStringContainsString( (string) $user_id, $identify['userId'] );
+		$this->assertSame(
+			Segmentflow_Ingest_Event::deterministic_message_id(
+				'wordpress:user_registered:identify',
+				'wordpress:user_registered:identify:' . $user_id
+			),
+			$identify['messageId']
+		);
+		$this->assert_no_anonymous_fields( $identify );
 
-		// Second event: user_registered track.
 		$track = $batch[1];
 		$this->assertSame( 'track', $track['type'] );
 		$this->assertSame( 'user_registered', $track['event'] );
+		$this->assertSame( 'newuser@example.com', $track['email'] );
+		$this->assertSame( $expected, $track['userId'] );
+		$this->assertSame( 'wordpress', $track['source'] );
 		$this->assertSame( $user_id, $track['properties']['user_id'] );
 		$this->assertSame( 'newuser@example.com', $track['properties']['email'] );
+		$this->assertSame(
+			Segmentflow_Ingest_Event::deterministic_message_id(
+				'wordpress:user_registered:track',
+				'wordpress:user_registered:track:' . $user_id
+			),
+			$track['messageId']
+		);
+		$this->assert_no_anonymous_fields( $track );
 
-		// Verify non-blocking.
-		$this->assertFalse( $this->mock_api->requests[0]['options']['blocking'] );
-
-		// Verify cookie was updated.
-		$cookie = Segmentflow_Identity_Cookie::read();
-		$this->assertSame( 'newuser@example.com', $cookie['e'] );
+		$this->assertTrue( $request['options']['blocking'] );
+		$this->assertSame( 1.5, $request['options']['timeout'] );
 	}
 
 	/**
-	 * Test on_user_register fires events using hook-provided identity
-	 * even when sf_id is absent (#105 fallback path).
+	 * Test registration uses wc_ prefix when WooCommerce is active.
 	 */
-	public function test_user_register_uses_hook_identity_without_sf_id(): void {
-		// No sf_id cookie set — but the hook provides user_id + email.
-		$user_id = self::factory()->user->create(
-			[ 'user_email' => 'ghost@example.com' ]
-		);
-		$user    = get_userdata( $user_id );
+	public function test_user_register_uses_wc_prefix_when_woocommerce_active(): void {
+		if ( ! Segmentflow_Helper::is_woocommerce_active() ) {
+			$this->markTestSkipped( 'WooCommerce is not active in this environment.' );
+		}
 
+		$user_id = self::factory()->user->create( [ 'user_email' => 'wcuser@example.com' ] );
+		$user    = get_userdata( $user_id );
 		$this->server_events->on_user_register( $user_id, (array) $user->data );
 
-		$this->assertCount( 1, $this->mock_api->requests );
+		$identify = $this->mock_api->requests[0]['body']['batch'][0];
+		$this->assertSame( 'wc_' . $user_id, $identify['userId'] );
+	}
 
-		$batch = $this->mock_api->requests[0]['body']['batch'];
-		$this->assertCount( 2, $batch );
+	/**
+	 * Test registration uses wp_ prefix when WooCommerce is inactive.
+	 */
+	public function test_user_register_uses_wp_prefix_when_woocommerce_inactive(): void {
+		if ( Segmentflow_Helper::is_woocommerce_active() ) {
+			$this->markTestSkipped( 'WooCommerce is active in this environment.' );
+		}
 
-		// Identify carries hook-provided userId. anonymousId is omitted
-		// because no sf_id was ever written.
-		$identify = $batch[0];
-		$this->assertSame( 'identify', $identify['type'] );
-		$this->assertArrayNotHasKey( 'anonymousId', $identify );
-		$this->assertStringContainsString( (string) $user_id, $identify['userId'] );
-		$this->assertSame( 'ghost@example.com', $identify['traits']['email'] );
+		$user_id = self::factory()->user->create( [ 'user_email' => 'wpuser@example.com' ] );
+		$user    = get_userdata( $user_id );
+		$this->server_events->on_user_register( $user_id, (array) $user->data );
+
+		$identify = $this->mock_api->requests[0]['body']['batch'][0];
+		$this->assertSame( 'wp_' . $user_id, $identify['userId'] );
 	}
 
 	// -------------------------------------------------------------------------
@@ -154,11 +178,9 @@ class Test_Server_Events extends WP_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Test on_login sends identify event and updates cookie.
+	 * Test on_login sends identify with occurrence messageId prefix.
 	 */
 	public function test_login_sends_identify(): void {
-		$this->set_identity( [ 'a' => 'anon-login-1' ] );
-
 		$user_id = self::factory()->user->create(
 			[
 				'user_login' => 'loginuser',
@@ -173,44 +195,49 @@ class Test_Server_Events extends WP_UnitTestCase {
 
 		$this->assertCount( 1, $this->mock_api->requests );
 
-		$batch = $this->mock_api->requests[0]['body']['batch'];
-		$this->assertCount( 1, $batch );
+		$identify = $this->mock_api->requests[0]['body']['batch'][0];
+		$prefix   = Segmentflow_Helper::is_woocommerce_active() ? 'wc_' : 'wp_';
 
-		$identify = $batch[0];
 		$this->assertSame( 'identify', $identify['type'] );
-		$this->assertSame( 'anon-login-1', $identify['anonymousId'] );
+		$this->assertSame( 'loginuser@example.com', $identify['email'] );
+		$this->assertSame( $prefix . $user_id, $identify['userId'] );
+		$this->assertSame( 'wordpress', $identify['source'] );
 		$this->assertSame( 'loginuser@example.com', $identify['traits']['email'] );
 		$this->assertSame( 'Bob', $identify['traits']['first_name'] );
 		$this->assertSame( 'Jones', $identify['traits']['last_name'] );
-		$this->assertStringContainsString( (string) $user_id, $identify['userId'] );
-
-		// Verify cookie updated.
-		$cookie = Segmentflow_Identity_Cookie::read();
-		$this->assertSame( 'loginuser@example.com', $cookie['e'] );
-		$this->assertStringContainsString( (string) $user_id, $cookie['u'] );
+		$this->assertStringStartsWith( 'sfc:v1:wordpress:login:', $identify['messageId'] );
+		$this->assert_no_anonymous_fields( $identify );
 	}
 
 	/**
-	 * Test on_login fires identify with hook-provided identity even when
-	 * sf_id is absent (#105 fallback path).
+	 * Test login retries reuse the same occurrence messageId after HTTP 503.
 	 */
-	public function test_login_uses_hook_identity_without_sf_id(): void {
+	public function test_login_reuses_message_id_across_retry(): void {
 		$user_id = self::factory()->user->create(
 			[
-				'user_login' => 'ghostlogin',
-				'user_email' => 'ghost@login.com',
+				'user_login' => 'retryuser',
+				'user_email' => 'retry@example.com',
 			]
 		);
 		$user    = get_userdata( $user_id );
 
-		$this->server_events->on_login( 'ghostlogin', $user );
+		$this->mock_api->queued_responses[] = [
+			'success'     => false,
+			'status_code' => 503,
+			'data'        => [
+				'error' => 'unavailable',
+			],
+		];
 
-		$this->assertCount( 1, $this->mock_api->requests );
+		$this->server_events->on_login( 'retryuser', $user );
 
-		$identify = $this->mock_api->requests[0]['body']['batch'][0];
-		$this->assertSame( 'identify', $identify['type'] );
-		$this->assertArrayNotHasKey( 'anonymousId', $identify );
-		$this->assertStringContainsString( (string) $user_id, $identify['userId'] );
+		$this->assertCount( 2, $this->mock_api->requests );
+
+		$first_id  = $this->mock_api->requests[0]['body']['batch'][0]['messageId'];
+		$second_id = $this->mock_api->requests[1]['body']['batch'][0]['messageId'];
+
+		$this->assertStringStartsWith( 'sfc:v1:wordpress:login:', $first_id );
+		$this->assertSame( $first_id, $second_id );
 	}
 
 	// -------------------------------------------------------------------------
@@ -218,11 +245,9 @@ class Test_Server_Events extends WP_UnitTestCase {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Test on_comment sends identify + comment_posted for approved comment.
+	 * Test on_comment sends identify + comment_posted for approved human comments.
 	 */
 	public function test_comment_sends_identify_and_track(): void {
-		$this->set_identity( [ 'a' => 'anon-comment-1' ] );
-
 		$post_id = self::factory()->post->create(
 			[
 				'post_title' => 'Test Blog Post',
@@ -241,7 +266,6 @@ class Test_Server_Events extends WP_UnitTestCase {
 		);
 
 		$comment = get_comment( $comment_id );
-
 		$this->server_events->on_comment( $comment_id, $comment );
 
 		$this->assertCount( 1, $this->mock_api->requests );
@@ -249,32 +273,73 @@ class Test_Server_Events extends WP_UnitTestCase {
 		$batch = $this->mock_api->requests[0]['body']['batch'];
 		$this->assertCount( 2, $batch );
 
-		// Identify event.
 		$identify = $batch[0];
 		$this->assertSame( 'identify', $identify['type'] );
+		$this->assertSame( 'jane@example.com', $identify['email'] );
+		$this->assertArrayNotHasKey( 'userId', $identify );
 		$this->assertSame( 'jane@example.com', $identify['traits']['email'] );
 		$this->assertSame( 'Commenter Jane', $identify['traits']['name'] );
+		$this->assertSame(
+			Segmentflow_Ingest_Event::deterministic_message_id(
+				'wordpress:comment:identify',
+				'wordpress:comment:identify:' . $comment_id
+			),
+			$identify['messageId']
+		);
+		$this->assert_no_anonymous_fields( $identify );
 
-		// Track event.
 		$track = $batch[1];
 		$this->assertSame( 'track', $track['type'] );
 		$this->assertSame( 'comment_posted', $track['event'] );
+		$this->assertSame( 'jane@example.com', $track['email'] );
+		$this->assertArrayNotHasKey( 'userId', $track );
 		$this->assertEquals( $comment_id, $track['properties']['comment_id'] );
 		$this->assertEquals( $post_id, $track['properties']['post_id'] );
 		$this->assertSame( 'Test Blog Post', $track['properties']['post_title'] );
 		$this->assertSame( 'post', $track['properties']['post_type'] );
+		$this->assertSame(
+			Segmentflow_Ingest_Event::deterministic_message_id(
+				'wordpress:comment:track',
+				'wordpress:comment:track:' . $comment_id
+			),
+			$track['messageId']
+		);
+		$this->assert_no_anonymous_fields( $track );
+	}
 
-		// Verify cookie updated with email.
-		$cookie = Segmentflow_Identity_Cookie::read();
-		$this->assertSame( 'jane@example.com', $cookie['e'] );
+	/**
+	 * Test logged-in comment includes prefixed userId.
+	 */
+	public function test_comment_logged_in_user_includes_user_id(): void {
+		$user_id = self::factory()->user->create( [ 'user_email' => 'commenter@example.com' ] );
+		$post_id = self::factory()->post->create();
+
+		$comment_id = wp_insert_comment(
+			[
+				'comment_post_ID'      => $post_id,
+				'comment_author'       => 'Logged In User',
+				'comment_author_email' => 'commenter@example.com',
+				'comment_content'      => 'Authenticated comment',
+				'comment_approved'     => 1,
+				'user_id'              => $user_id,
+			]
+		);
+
+		$comment = get_comment( $comment_id );
+		$this->server_events->on_comment( $comment_id, $comment );
+
+		$prefix   = Segmentflow_Helper::is_woocommerce_active() ? 'wc_' : 'wp_';
+		$identify = $this->mock_api->requests[0]['body']['batch'][0];
+		$track    = $this->mock_api->requests[0]['body']['batch'][1];
+
+		$this->assertSame( $prefix . $user_id, $identify['userId'] );
+		$this->assertSame( $prefix . $user_id, $track['userId'] );
 	}
 
 	/**
 	 * Test on_comment skips unapproved (pending) comments.
 	 */
 	public function test_comment_skips_unapproved(): void {
-		$this->set_identity( [ 'a' => 'anon-comment-2' ] );
-
 		$post_id    = self::factory()->post->create();
 		$comment_id = wp_insert_comment(
 			[
@@ -295,8 +360,6 @@ class Test_Server_Events extends WP_UnitTestCase {
 	 * Test on_comment skips spam comments.
 	 */
 	public function test_comment_skips_spam(): void {
-		$this->set_identity( [ 'a' => 'anon-comment-3' ] );
-
 		$post_id    = self::factory()->post->create();
 		$comment_id = wp_insert_comment(
 			[
@@ -314,46 +377,9 @@ class Test_Server_Events extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test on_comment fires events using the email surfaced by the hook
-	 * when sf_id is absent (#105 fallback path).
+	 * Test on_comment requires email and drops email-less comments.
 	 */
-	public function test_comment_uses_email_fallback_without_sf_id(): void {
-		$post_id    = self::factory()->post->create();
-		$comment_id = wp_insert_comment(
-			[
-				'comment_post_ID'      => $post_id,
-				'comment_author'       => 'No-Cookie Jane',
-				'comment_author_email' => 'noidentity@example.com',
-				'comment_content'      => 'No cookie comment',
-				'comment_approved'     => 1,
-			]
-		);
-
-		$comment = get_comment( $comment_id );
-		$this->server_events->on_comment( $comment_id, $comment );
-
-		$this->assertCount( 1, $this->mock_api->requests );
-
-		$batch = $this->mock_api->requests[0]['body']['batch'];
-		$this->assertCount( 2, $batch );
-
-		$identify = $batch[0];
-		$this->assertSame( 'identify', $identify['type'] );
-		$this->assertArrayNotHasKey( 'anonymousId', $identify );
-		// Email anchors the userId when no logged-in user / sf_id exists.
-		$this->assertSame( 'noidentity@example.com', $identify['userId'] );
-		$this->assertSame( 'noidentity@example.com', $identify['traits']['email'] );
-
-		$track = $batch[1];
-		$this->assertSame( 'track', $track['type'] );
-		$this->assertSame( 'comment_posted', $track['event'] );
-	}
-
-	/**
-	 * Test that a comment with neither sf_id nor an email is still
-	 * dropped — `resolve_identity` returns null when nothing is available.
-	 */
-	public function test_comment_drops_when_no_identity_available(): void {
+	public function test_comment_requires_email(): void {
 		$post_id    = self::factory()->post->create();
 		$comment_id = wp_insert_comment(
 			[
@@ -371,32 +397,159 @@ class Test_Server_Events extends WP_UnitTestCase {
 		$this->assertCount( 0, $this->mock_api->requests );
 	}
 
+	// -------------------------------------------------------------------------
+	// Form submission tests
+	// -------------------------------------------------------------------------
+
 	/**
-	 * Test on_comment with logged-in user updates userId in cookie.
+	 * Test form submission sends ordered identify then form_submission track.
 	 */
-	public function test_comment_logged_in_user_updates_cookie(): void {
-		$this->set_identity( [ 'a' => 'anon-comment-4' ] );
-
-		$user_id = self::factory()->user->create( [ 'user_email' => 'commenter@example.com' ] );
-		$post_id = self::factory()->post->create();
-
-		$comment_id = wp_insert_comment(
+	public function test_form_submission_sends_identify_and_track(): void {
+		$reflection = new \ReflectionMethod( $this->server_events, 'handle_form_submission' );
+		$reflection->invoke(
+			$this->server_events,
+			'form@example.com',
+			'Contact Form',
+			12,
+			'cf7',
 			[
-				'comment_post_ID'      => $post_id,
-				'comment_author'       => 'Logged In User',
-				'comment_author_email' => 'commenter@example.com',
-				'comment_content'      => 'Authenticated comment',
-				'comment_approved'     => 1,
-				'user_id'              => $user_id,
+				'your-email' => 'form@example.com',
+				'your-name'  => 'Form User',
 			]
 		);
 
-		$comment = get_comment( $comment_id );
-		$this->server_events->on_comment( $comment_id, $comment );
+		$this->assertCount( 1, $this->mock_api->requests );
 
-		// Verify cookie has userId.
-		$cookie = Segmentflow_Identity_Cookie::read();
-		$this->assertStringContainsString( (string) $user_id, $cookie['u'] );
+		$batch = $this->mock_api->requests[0]['body']['batch'];
+		$this->assertCount( 2, $batch );
+
+		$identify = $batch[0];
+		$track    = $batch[1];
+
+		$this->assertSame( 'identify', $identify['type'] );
+		$this->assertSame( 'form@example.com', $identify['email'] );
+		$this->assertArrayNotHasKey( 'userId', $identify );
+		$this->assertSame( 'wordpress', $identify['source'] );
+		$this->assertSame( 'Form User', $identify['traits']['name'] );
+		$this->assertStringStartsWith( 'sfc:v1:wordpress:form:identify:', $identify['messageId'] );
+		$this->assert_no_anonymous_fields( $identify );
+
+		$this->assertSame( 'track', $track['type'] );
+		$this->assertSame( 'form_submission', $track['event'] );
+		$this->assertSame( 'form@example.com', $track['email'] );
+		$this->assertArrayNotHasKey( 'userId', $track );
+		$this->assertSame( 'cf7', $track['properties']['form_type'] );
+		$this->assertSame( 'Contact Form', $track['properties']['form_title'] );
+		$this->assertSame( 12, $track['properties']['form_id'] );
+		$this->assertStringStartsWith( 'sfc:v1:wordpress:form:track:', $track['messageId'] );
+		$this->assert_no_anonymous_fields( $track );
+
+		$identify_uuid = substr( $identify['messageId'], strlen( 'sfc:v1:wordpress:form:identify:' ) );
+		$track_uuid    = substr( $track['messageId'], strlen( 'sfc:v1:wordpress:form:track:' ) );
+		$this->assertSame( $identify_uuid, $track_uuid );
+	}
+
+	/**
+	 * Test Elementor form submission also shares one base UUID across items.
+	 */
+	public function test_elementor_form_submission_shares_base_uuid(): void {
+		$reflection = new \ReflectionMethod( $this->server_events, 'handle_form_submission' );
+		$reflection->invoke(
+			$this->server_events,
+			'elementor@example.com',
+			'Lead Form',
+			0,
+			'elementor',
+			[ 'email' => 'elementor@example.com' ]
+		);
+
+		$batch      = $this->mock_api->requests[0]['body']['batch'];
+		$identify   = $batch[0];
+		$track      = $batch[1];
+		$id_uuid    = substr( $identify['messageId'], strlen( 'sfc:v1:wordpress:form:identify:' ) );
+		$track_uuid = substr( $track['messageId'], strlen( 'sfc:v1:wordpress:form:track:' ) );
+
+		$this->assertSame( 'elementor', $track['properties']['form_type'] );
+		$this->assertArrayNotHasKey( 'userId', $identify );
+		$this->assertArrayNotHasKey( 'userId', $track );
+		$this->assertSame( $id_uuid, $track_uuid );
+	}
+
+	/**
+	 * Test form submission is skipped without a valid email.
+	 */
+	public function test_form_submission_skips_without_email(): void {
+		$reflection = new \ReflectionMethod( $this->server_events, 'handle_form_submission' );
+		$reflection->invoke(
+			$this->server_events,
+			'',
+			'No Email Form',
+			1,
+			'cf7',
+			[ 'your-name' => 'Nobody' ]
+		);
+
+		$this->assertCount( 0, $this->mock_api->requests );
+	}
+
+	/**
+	 * Test email extraction from common form fields.
+	 */
+	public function test_email_extraction_from_common_fields(): void {
+		$reflection = new \ReflectionMethod( $this->server_events, 'extract_email_from_form_data' );
+
+		$this->assertSame(
+			'user@example.com',
+			$reflection->invoke( $this->server_events, [ 'your-email' => 'user@example.com' ] )
+		);
+		$this->assertSame(
+			'plain@example.com',
+			$reflection->invoke( $this->server_events, [ 'email' => 'plain@example.com' ] )
+		);
+		$this->assertSame(
+			'under@example.com',
+			$reflection->invoke( $this->server_events, [ 'your_email' => 'under@example.com' ] )
+		);
+		$this->assertSame(
+			'scan@example.com',
+			$reflection->invoke(
+				$this->server_events,
+				[
+					'some-field' => 'not-an-email',
+					'other'      => 'scan@example.com',
+				]
+			)
+		);
+		$this->assertSame(
+			'',
+			$reflection->invoke(
+				$this->server_events,
+				[
+					'name'    => 'John',
+					'message' => 'Hello',
+				]
+			)
+		);
+	}
+
+	/**
+	 * Test name extraction from common form fields.
+	 */
+	public function test_name_extraction_from_common_fields(): void {
+		$reflection = new \ReflectionMethod( $this->server_events, 'extract_name_from_form_data' );
+
+		$this->assertSame(
+			'Jane Doe',
+			$reflection->invoke( $this->server_events, [ 'your-name' => 'Jane Doe' ] )
+		);
+		$this->assertSame(
+			'John Smith',
+			$reflection->invoke( $this->server_events, [ 'name' => 'John Smith' ] )
+		);
+		$this->assertSame(
+			'',
+			$reflection->invoke( $this->server_events, [ 'email' => 'test@example.com' ] )
+		);
 	}
 
 	// -------------------------------------------------------------------------
@@ -410,7 +563,8 @@ class Test_Server_Events extends WP_UnitTestCase {
 		delete_option( 'segmentflow_write_key' );
 
 		$options       = new Segmentflow_Options();
-		$server_events = new Segmentflow_Server_Events( $options, $this->mock_api );
+		$ingest_client = new Segmentflow_Ingest_Client( $options, $this->mock_api );
+		$server_events = new Segmentflow_Server_Events( $options, $ingest_client );
 		$server_events->register_hooks();
 
 		$this->assertFalse( has_action( 'user_register', [ $server_events, 'on_user_register' ] ) );
@@ -422,7 +576,7 @@ class Test_Server_Events extends WP_UnitTestCase {
 	 * Test that register_hooks registers core actions when connected.
 	 */
 	public function test_hooks_registered_when_connected(): void {
-		$server_events = new Segmentflow_Server_Events( $this->options, $this->mock_api );
+		$server_events = new Segmentflow_Server_Events( $this->options, $this->ingest_client );
 		$server_events->register_hooks();
 
 		$this->assertSame( 10, has_action( 'user_register', [ $server_events, 'on_user_register' ] ) );
@@ -434,8 +588,7 @@ class Test_Server_Events extends WP_UnitTestCase {
 	 * Test that CF7 hook is not registered when CF7 is not active.
 	 */
 	public function test_cf7_hook_not_registered_without_cf7(): void {
-		// WPCF7_VERSION should not be defined in the test environment.
-		$server_events = new Segmentflow_Server_Events( $this->options, $this->mock_api );
+		$server_events = new Segmentflow_Server_Events( $this->options, $this->ingest_client );
 		$server_events->register_hooks();
 
 		$this->assertFalse( has_action( 'wpcf7_mail_sent', [ $server_events, 'on_cf7_submit' ] ) );
@@ -446,10 +599,10 @@ class Test_Server_Events extends WP_UnitTestCase {
 	 */
 	public function test_send_events_skips_without_write_key(): void {
 		delete_option( 'segmentflow_write_key' );
-		$this->set_identity( [ 'a' => 'anon-no-key' ] );
 
 		$options       = new Segmentflow_Options();
-		$server_events = new Segmentflow_Server_Events( $options, $this->mock_api );
+		$ingest_client = new Segmentflow_Ingest_Client( $options, $this->mock_api );
+		$server_events = new Segmentflow_Server_Events( $options, $ingest_client );
 
 		$user_id = self::factory()->user->create( [ 'user_email' => 'nokey@example.com' ] );
 		$user    = get_userdata( $user_id );
@@ -459,237 +612,13 @@ class Test_Server_Events extends WP_UnitTestCase {
 	}
 
 	// -------------------------------------------------------------------------
-	// Form submission tests (using the shared handler directly)
+	// Consent payload stamping
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Test on_cf7_submit extracts email and sends events.
-	 *
-	 * Since WPCF7_Submission is not available in the test environment,
-	 * we test the shared handle_form_submission logic indirectly through
-	 * on_user_register (which exercises the same build/send patterns).
-	 * The CF7-specific email extraction is tested via the extract helper.
-	 */
-	public function test_email_extraction_from_common_fields(): void {
-		// Test the email extraction logic that CF7/Elementor handlers use.
-		// We use reflection to access the private method.
-		$reflection = new \ReflectionMethod( $this->server_events, 'extract_email_from_form_data' );
-
-		// Match on 'your-email' (CF7 default).
-		$result = $reflection->invoke(
-			$this->server_events,
-			[ 'your-email' => 'user@example.com' ]
-		);
-		$this->assertSame( 'user@example.com', $result );
-
-		// Match on 'email'.
-		$result = $reflection->invoke(
-			$this->server_events,
-			[ 'email' => 'plain@example.com' ]
-		);
-		$this->assertSame( 'plain@example.com', $result );
-
-		// Match on 'your_email'.
-		$result = $reflection->invoke(
-			$this->server_events,
-			[ 'your_email' => 'under@example.com' ]
-		);
-		$this->assertSame( 'under@example.com', $result );
-
-		// Fallback: scan all fields.
-		$result = $reflection->invoke(
-			$this->server_events,
-			[
-				'some-field' => 'not-an-email',
-				'other'      => 'scan@example.com',
-			]
-		);
-		$this->assertSame( 'scan@example.com', $result );
-
-		// No email found.
-		$result = $reflection->invoke(
-			$this->server_events,
-			[
-				'name'    => 'John',
-				'message' => 'Hello',
-			]
-		);
-		$this->assertSame( '', $result );
-	}
-
-	/**
-	 * Test name extraction from common form fields.
-	 */
-	public function test_name_extraction_from_common_fields(): void {
-		$reflection = new \ReflectionMethod( $this->server_events, 'extract_name_from_form_data' );
-
-		// Match on 'your-name' (CF7 default).
-		$result = $reflection->invoke(
-			$this->server_events,
-			[ 'your-name' => 'Jane Doe' ]
-		);
-		$this->assertSame( 'Jane Doe', $result );
-
-		// Match on 'name'.
-		$result = $reflection->invoke(
-			$this->server_events,
-			[ 'name' => 'John Smith' ]
-		);
-		$this->assertSame( 'John Smith', $result );
-
-		// No name found.
-		$result = $reflection->invoke(
-			$this->server_events,
-			[ 'email' => 'test@example.com' ]
-		);
-		$this->assertSame( '', $result );
-	}
-
-	// -------------------------------------------------------------------------
-	// Anonymous userId handling tests
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Test build_track_event omits null userId for anonymous visitors.
-	 *
-	 * Before this fix, build_track_event() included `"userId": null` in the
-	 * JSON payload, which the ingest API rejected. Now it unsets null userId
-	 * the same way build_identify_event() does.
-	 */
-	public function test_build_track_event_omits_null_user_id(): void {
-		$reflection = new \ReflectionMethod( $this->server_events, 'build_track_event' );
-
-		// Anonymous visitor: identity has 'a' (anonymousId) but no 'u' (userId).
-		$identity = [ 'a' => 'anon-track-1' ];
-		$result   = $reflection->invoke(
-			$this->server_events,
-			'form_submission',
-			$identity,
-			[ 'form_type' => 'cf7' ]
-		);
-
-		$this->assertSame( 'track', $result['type'] );
-		$this->assertSame( 'form_submission', $result['event'] );
-		$this->assertSame( 'anon-track-1', $result['anonymousId'] );
-		$this->assertArrayNotHasKey( 'userId', $result, 'userId should be omitted when null' );
-	}
-
-	/**
-	 * Test build_track_event includes userId for logged-in users.
-	 */
-	public function test_build_track_event_includes_user_id_for_logged_in(): void {
-		$reflection = new \ReflectionMethod( $this->server_events, 'build_track_event' );
-
-		// Logged-in visitor: identity has both 'a' and 'u'.
-		$identity = [
-			'a' => 'anon-track-2',
-			'u' => 'wp_42',
-		];
-		$result   = $reflection->invoke(
-			$this->server_events,
-			'form_submission',
-			$identity,
-			[ 'form_type' => 'cf7' ]
-		);
-
-		$this->assertSame( 'wp_42', $result['userId'] );
-		$this->assertSame( 'anon-track-2', $result['anonymousId'] );
-	}
-
-	/**
-	 * Test build_identify_event omits null userId for anonymous visitors.
-	 *
-	 * This was already working before the fix, but we test it for completeness
-	 * and to ensure the pattern is consistent between identify and track.
-	 */
-	public function test_build_identify_event_omits_null_user_id(): void {
-		$reflection = new \ReflectionMethod( $this->server_events, 'build_identify_event' );
-
-		$identity = [ 'a' => 'anon-identify-1' ];
-		$result   = $reflection->invoke(
-			$this->server_events,
-			$identity,
-			[ 'email' => 'test@example.com' ]
-		);
-
-		$this->assertSame( 'identify', $result['type'] );
-		$this->assertSame( 'anon-identify-1', $result['anonymousId'] );
-		$this->assertArrayNotHasKey( 'userId', $result, 'userId should be omitted when null' );
-	}
-
-	/**
-	 * Test anonymous user_register sends events without userId in track event.
-	 *
-	 * This tests the end-to-end flow: an anonymous visitor (no WordPress account)
-	 * triggers a registration where the identity cookie has no 'u' field.
-	 * Both identify and track events should omit userId.
-	 *
-	 * Note: In practice, on_user_register always has a WP user ID because the
-	 * hook fires after user creation. This test verifies the payload builder
-	 * handles missing userId correctly at the event construction level.
-	 */
-	public function test_build_events_consistent_null_handling(): void {
-		$identify_reflection = new \ReflectionMethod( $this->server_events, 'build_identify_event' );
-		$track_reflection    = new \ReflectionMethod( $this->server_events, 'build_track_event' );
-
-		$anonymous_identity = [ 'a' => 'anon-consistency-1' ];
-
-		$identify = $identify_reflection->invoke(
-			$this->server_events,
-			$anonymous_identity,
-			[ 'email' => 'jane@example.com' ]
-		);
-
-		$track = $track_reflection->invoke(
-			$this->server_events,
-			'form_submission',
-			$anonymous_identity,
-			[ 'form_type' => 'cf7' ]
-		);
-
-		// Both should have the same pattern: no userId key at all.
-		$this->assertArrayNotHasKey( 'userId', $identify );
-		$this->assertArrayNotHasKey( 'userId', $track );
-
-		// Both should have anonymousId.
-		$this->assertSame( 'anon-consistency-1', $identify['anonymousId'] );
-		$this->assertSame( 'anon-consistency-1', $track['anonymousId'] );
-	}
-
-	// -------------------------------------------------------------------------
-	// Helpers
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Set the sf_id identity cookie for the current test.
-	 *
-	 * @param array<string, string> $data Identity fields.
-	 */
-	private function set_identity( array $data ): void {
-		Segmentflow_Identity_Cookie::reset_cache();
-		// Seed sf_consent so Identity_Cookie::write() is permitted (#105).
-		Segmentflow_Consent_Cookie::reset_cache();
-		Segmentflow_Consent_Cookie::set_consent(
-			[
-				'analytics' => true,
-				'marketing' => true,
-			]
-		);
-		Segmentflow_Identity_Cookie::write( $data );
-	}
-
-	// -------------------------------------------------------------------------
-	// Consent payload stamping (#104 / #105)
-	// -------------------------------------------------------------------------
-
-	/**
-	 * Test that outgoing batches stamp the visitor's consent flags so the
-	 * server-side gate (#104) can record audit + apply marketing-tier
-	 * forwarding decisions.
+	 * Test that outgoing batches stamp consent flags when sf_consent is set.
 	 */
 	public function test_batch_includes_consent_when_cookie_set(): void {
-		$this->set_identity( [ 'a' => 'anon-consent-1' ] );
-		Segmentflow_Consent_Cookie::reset_cache();
 		Segmentflow_Consent_Cookie::set_consent(
 			[
 				'analytics' => true,
@@ -697,9 +626,7 @@ class Test_Server_Events extends WP_UnitTestCase {
 			]
 		);
 
-		$user_id = self::factory()->user->create(
-			[ 'user_email' => 'consenting@example.com' ]
-		);
+		$user_id = self::factory()->user->create( [ 'user_email' => 'consenting@example.com' ] );
 		$user    = get_userdata( $user_id );
 		$this->server_events->on_user_register( $user_id, (array) $user->data );
 
@@ -711,19 +638,32 @@ class Test_Server_Events extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test that the consent field is omitted when sf_consent is absent —
-	 * the API gate treats no-consent as fully backward-compatible (#104).
+	 * Test that consent is omitted when sf_consent is absent.
 	 */
 	public function test_batch_omits_consent_when_cookie_absent(): void {
-		// No sf_consent — but hook still fires via fallback path.
-		$user_id = self::factory()->user->create(
-			[ 'user_email' => 'no-consent@example.com' ]
-		);
+		$user_id = self::factory()->user->create( [ 'user_email' => 'no-consent@example.com' ] );
 		$user    = get_userdata( $user_id );
 		$this->server_events->on_user_register( $user_id, (array) $user->data );
 
 		$this->assertCount( 1, $this->mock_api->requests );
 		$body = $this->mock_api->requests[0]['body'];
 		$this->assertArrayNotHasKey( 'consent', $body );
+	}
+
+	// -------------------------------------------------------------------------
+	// Helpers
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Assert forbidden anonymous / routing fields are absent.
+	 *
+	 * @param array<string, mixed> $item Ingest item.
+	 */
+	private function assert_no_anonymous_fields( array $item ): void {
+		$this->assertArrayNotHasKey( 'anonymousId', $item );
+		$this->assertArrayNotHasKey( 'organizationId', $item );
+		$this->assertArrayNotHasKey( 'sourceInstanceId', $item );
+		$this->assertArrayNotHasKey( 'identityNamespace', $item );
+		$this->assertArrayNotHasKey( 'profileId', $item );
 	}
 }

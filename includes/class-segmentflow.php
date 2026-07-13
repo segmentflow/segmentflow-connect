@@ -43,10 +43,11 @@ class Segmentflow {
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-helper.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-options.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-consent-cookie.php';
-		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-identity-cookie.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-tracking.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-auth.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-api.php';
+		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-ingest-event.php';
+		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-ingest-client.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-server-events.php';
 		require_once SEGMENTFLOW_PATH . 'includes/class-segmentflow-shortcodes.php';
 
@@ -81,12 +82,6 @@ class Segmentflow {
 	private function init_classes(): void {
 		$options = new Segmentflow_Options();
 
-		// ALWAYS: ensure identity cookie exists (server-set, immune to Safari ITP).
-		// Priority 1 on `init` so the cookie is available for all subsequent hooks.
-		if ( ! is_admin() ) {
-			add_action( 'init', [ 'Segmentflow_Identity_Cookie', 'ensure_anonymous_id' ], 1 );
-		}
-
 		// ALWAYS: core tracking (works on any WordPress site).
 		$tracking = new Segmentflow_Tracking( $options );
 		$tracking->register_hooks();
@@ -114,9 +109,10 @@ class Segmentflow {
 		$lifecycle = new Segmentflow_Lifecycle();
 		$lifecycle->register_hooks();
 
-		// ALWAYS: server-side identity and form events (fire-and-forget to ingest API).
+		// ALWAYS: server-side identity and form events (identified ingest client).
 		$api           = new Segmentflow_API( $options );
-		$server_events = new Segmentflow_Server_Events( $options, $api );
+		$ingest_client = new Segmentflow_Ingest_Client( $options, $api );
+		$server_events = new Segmentflow_Server_Events( $options, $ingest_client );
 		$server_events->register_hooks();
 
 		// CONDITIONAL: WooCommerce enrichment.
@@ -129,8 +125,8 @@ class Segmentflow {
 			$wc_auth = new Segmentflow_WC_Auth( $options );
 			$wc_auth->register_hooks();
 
-			// Server-side cart and checkout events (shares API instance).
-			$wc_server_events = new Segmentflow_WC_Server_Events( $options, $api );
+			// Server-side cart and checkout events (shares ingest client).
+			$wc_server_events = new Segmentflow_WC_Server_Events( $options, $ingest_client );
 			$wc_server_events->register_hooks();
 
 			// Self-heal: ensure WC webhooks exist whenever the plugin is connected

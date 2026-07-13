@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+* Identified-only ingest cutover: remove anonymous `sf_id` identity, emit retry-stable identified payloads, and drop pre-email guest activity
 * Update brand logos to v2
 
 ## [2.4.0](https://github.com/segmentflow/segmentflow-connect/compare/v2.3.1...v2.4.0) (2026-05-06)

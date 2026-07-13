@@ -42,19 +42,41 @@ npx @wordpress/env run cli wp option list --search=segmentflow_*
 npx @wordpress/env run cli wp plugin list
 ```
 
-## Linting
+## Linting and typechecking
 
 ```bash
 pnpm lint                # ESLint + PHPCS
 pnpm lint:fix            # Auto-fix
+pnpm exec tsc --noEmit   # TypeScript typecheck (no emit)
 ```
 
 ## Running tests
 
 ```bash
-npx @wordpress/env run tests-cli --env-cwd=wp-content/plugins/segmentflow-connect \
-  vendor/bin/phpunit
+pnpm test:ts
+pnpm test:php
+
+# Focused identified-ingest contract fixture
+php scripts/generate-identified-ingest-fixture.php
+pnpm test:php -- --filter Test_Identified_Ingest_Contract
 ```
+
+After the coordinated backend branch lands, validate the committed fixture from the `segmentflow-ai` worktree:
+
+```bash
+pnpm contract:identified-ingest -- /path/to/segmentflow-connect
+```
+
+## Identified-only event model (current)
+
+- The plugin never creates or transmits anonymous identity. `sf_id` and the former anonymous browse queue are removed.
+- `sf_consent` is permission state only. Granting consent does not mint an identifier or flush historical events.
+- Pre-email guest cart/page/form activity is dropped, not queued.
+- WordPress/WooCommerce lifecycle, comments, forms, identified cart mutations, and checkout identity are owned by PHP server hooks and sent to `POST /api/v1/ingest/batch` with retry-stable `messageId` values.
+- Browser page/product/cart-page/checkout-started interactions are owned by the shared Segmentflow SDK WooCommerce Adapter; this repository only provides page context.
+- Browser form emission is removed; CF7/Elementor submissions are owned by PHP hooks.
+- The ingest client performs at most one bounded retry (1.5s timeout) for lost responses, HTTP 503, or `retryable: true` item outcomes.
+- Order/refund revenue facts remain trusted webhook/API behavior.
 
 ## Generating translation files
 
@@ -203,4 +225,6 @@ The plugin calls two API endpoints:
 
 1. Enable "Require Consent" in settings
 2. View page source -- SDK config should include `consentRequired: true`
-3. SDK should not track until consent is granted
+3. Absent/denied analytics drops browser analytics without queuing anonymous history
+4. Granting consent changes permission only — it does not create `sf_id` or flush past events
+5. Server lifecycle/form/checkout hooks still attach a consent snapshot when present

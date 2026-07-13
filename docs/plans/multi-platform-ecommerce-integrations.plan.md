@@ -11,7 +11,8 @@
 | 2026-02-21 | Initial plan created. WooCommerce as first integration, BigCommerce as follow-up.                                                                                                                                           |
 | 2026-02-21 | Updated WooCommerce approach: unified WordPress plugin (`segmentflow-connect`), CDN-loaded SDK, dual-direction auto-auth, WooCommerce SDK plugin.                                                                           |
 | 2026-02-21 | Added comprehensive repo setup. Unified plugin redesign with orchestrator pattern and `integrations/` directory.                                                                                                            |
-| 2026-02-26 | **Phase 1 complete.** All WooCommerce integration work finished across both repos. Server-side event architecture (identity cookie, PHP hooks, SDK cleanup) also complete (see deleted `server-side-order-events.plan.md`). |
+| 2026-02-26 | **Phase 1 complete.** All WooCommerce integration work finished across both repos. Server-side event architecture (PHP hooks, SDK cleanup) also complete (see deleted `server-side-order-events.plan.md`). |
+| 2026-07-13 | **Identified-only cutover.** Removed `sf_id` / anonymous identity lifecycle. Plugin now emits identified ingest payloads only, with bounded retry and shared-SDK ownership of browse page/product/checkout-started events. |
 
 ---
 
@@ -30,10 +31,11 @@ All items below have been implemented, tested, committed, and deployed.
 | Admin UI (dynamic tabs)                                                         | Done   | `admin/class-segmentflow-admin.php`, `admin/class-segmentflow-admin-settings.php`                                 |
 | WooCommerce context enrichment                                                  | Done   | `integrations/woocommerce/class-segmentflow-wc-tracking.php`                                                      |
 | WC auto-auth                                                                    | Done   | `integrations/woocommerce/class-segmentflow-wc-auth.php`                                                          |
-| Unified identity cookie (`sf_id`)                                               | Done   | `includes/class-segmentflow-identity-cookie.php`                                                                  |
-| PHP server-side events (cart, forms, identity)                                  | Done   | `includes/class-segmentflow-server-events.php`, `integrations/woocommerce/class-segmentflow-wc-server-events.php` |
-| Non-blocking HTTP for fire-and-forget                                           | Done   | `includes/class-segmentflow-api.php`                                                                              |
-| PHPUnit tests (49+ tests passing)                                               | Done   | `tests/test-identity-cookie.php`, `tests/test-server-events.php`, `tests/test-wc-server-events.php`, etc.         |
+| Unified identity cookie (`sf_id`)                                               | Removed | Deleted in the 2026-07-13 identified-only cutover (`docs/plans/2026-07-13-identified-event-ingestion-and-anonymous-removal.plan.md`) |
+| Identified ingest client + event builders                                       | Done   | `includes/class-segmentflow-ingest-event.php`, `includes/class-segmentflow-ingest-client.php`                                      |
+| PHP server-side events (identified cart/forms/lifecycle)                        | Done   | `includes/class-segmentflow-server-events.php`, `integrations/woocommerce/class-segmentflow-wc-server-events.php`                 |
+| Bounded synchronous ingest retry                                                | Done   | `includes/class-segmentflow-ingest-client.php`                                                                                    |
+| PHPUnit / Vitest coverage                                                       | Done   | `tests/test-ingest-*.php`, `tests/test-server-events.php`, `tests/test-wc-server-events.php`, `src/__tests__/consent.test.ts`    |
 
 ### `segmentflow-ai` (Backend API)
 
@@ -65,7 +67,7 @@ All items below have been implemented, tested, committed, and deployed.
 | Component                                                             | Status | Key Files                                                                |
 | --------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------ |
 | SDK WooCommerce plugin (detection, context enrichment, email capture) | Done   | `packages/browser/sdk-web/src/plugins/woocommerce.plugin.ts` (572 lines) |
-| Unified `sf_id` cookie (read/write, merge-on-write)                   | Done   | `packages/browser/sdk-web/src/web.ts`                                    |
+| Unified `sf_id` cookie (read/write, merge-on-write)                   | Removed | Replaced by identified-only ingest; plugin no longer ships anonymous identity |
 | `source: "sdk"` on all events                                         | Done   | `packages/browser/sdk-web/src/web.ts`                                    |
 | `source` in `BaseEvent` interface                                     | Done   | `packages/node/sdk-core/src/events/types.ts`                             |
 | Cart listeners removed (PHP authoritative)                            | Done   | `woocommerce.plugin.ts` (-451 lines)                                     |
@@ -91,7 +93,7 @@ All items below have been implemented, tested, committed, and deployed.
 | Item                         | Status      | Notes                                                                                                                                             |
 | ---------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | WordPress.org SVN submission | Not started | Plugin is functional but hasn't been submitted. CI/CD workflows, changesets, `readme.txt` are in place.                                           |
-| End-to-end manual testing    | Ongoing     | Full flow (connect, auto-auth, webhook delivery, historical sync, SDK events, identity stitching) needs verification on a real WooCommerce store. |
+| End-to-end manual testing    | Ongoing     | Full flow (connect, auto-auth, webhook delivery, historical sync, identified SDK/server events) needs verification on a real WooCommerce store. |
 
 ---
 

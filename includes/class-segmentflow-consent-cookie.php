@@ -28,8 +28,9 @@ defined( 'ABSPATH' ) || exit;
  * Class Segmentflow_Consent_Cookie
  *
  * Static helper. The class never enforces consent itself — callers
- * (Identity_Cookie::ensure_anonymous_id, the storefront SDK) read its
- * decisions and decide what to do.
+ * (server event owners, the storefront SDK) read its decisions and
+ * decide what to do. Consent is permission state only; it never creates
+ * identity.
  */
 class Segmentflow_Consent_Cookie {
 

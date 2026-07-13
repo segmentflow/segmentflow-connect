@@ -27,6 +27,13 @@ class Test_WC_Locale extends WP_UnitTestCase {
 	private Mock_Segmentflow_API $mock_api;
 
 	/**
+	 * Identified ingest client.
+	 *
+	 * @var Segmentflow_Ingest_Client
+	 */
+	private Segmentflow_Ingest_Client $ingest_client;
+
+	/**
 	 * Server events instance under test.
 	 *
 	 * @var Segmentflow_WC_Server_Events
@@ -47,11 +54,10 @@ class Test_WC_Locale extends WP_UnitTestCase {
 
 		$this->options       = new Segmentflow_Options();
 		$this->mock_api      = new Mock_Segmentflow_API( $this->options );
-		$this->server_events = new Segmentflow_WC_Server_Events( $this->options, $this->mock_api );
+		$this->ingest_client = new Segmentflow_Ingest_Client( $this->options, $this->mock_api );
+		$this->server_events = new Segmentflow_WC_Server_Events( $this->options, $this->ingest_client );
 
-		Segmentflow_Identity_Cookie::reset_cache();
 		Segmentflow_Consent_Cookie::reset_cache();
-		unset( $_COOKIE[ Segmentflow_Identity_Cookie::COOKIE_NAME ] );
 		unset( $_COOKIE[ Segmentflow_Consent_Cookie::COOKIE_NAME ] );
 	}
 
@@ -62,6 +68,8 @@ class Test_WC_Locale extends WP_UnitTestCase {
 		remove_all_filters( 'determine_locale' );
 		remove_all_filters( 'locale' );
 		delete_option( 'segmentflow_write_key' );
+		Segmentflow_Consent_Cookie::reset_cache();
+		unset( $_COOKIE[ Segmentflow_Consent_Cookie::COOKIE_NAME ] );
 		parent::tear_down();
 	}
 
@@ -149,7 +157,6 @@ class Test_WC_Locale extends WP_UnitTestCase {
 				return 'ja';
 			}
 		);
-		$this->set_identity( [ 'a' => 'anon-locale-1' ] );
 
 		$order = wc_create_order();
 		$order->set_billing_email( 'locale@example.com' );
@@ -175,6 +182,7 @@ class Test_WC_Locale extends WP_UnitTestCase {
 		);
 
 		$order = wc_create_order();
+		$order->set_billing_email( 'blocks-locale@example.com' );
 		$order->save();
 
 		$this->server_events->on_blocks_checkout( $order );
@@ -197,6 +205,7 @@ class Test_WC_Locale extends WP_UnitTestCase {
 		);
 
 		$order = wc_create_order();
+		$order->set_billing_email( 'idempotent@example.com' );
 		$order->update_meta_data( Segmentflow_WC_Helper::LOCALE_META_KEY, 'ja' );
 		$order->save();
 
@@ -240,22 +249,5 @@ class Test_WC_Locale extends WP_UnitTestCase {
 			10,
 			has_action( 'woocommerce_store_api_checkout_order_processed', [ $this->server_events, 'on_blocks_checkout' ] )
 		);
-	}
-
-	/**
-	 * Set the sf_id identity cookie for the current test.
-	 *
-	 * @param array<string, string> $data Identity fields.
-	 */
-	private function set_identity( array $data ): void {
-		Segmentflow_Identity_Cookie::reset_cache();
-		Segmentflow_Consent_Cookie::reset_cache();
-		Segmentflow_Consent_Cookie::set_consent(
-			[
-				'analytics' => true,
-				'marketing' => true,
-			]
-		);
-		Segmentflow_Identity_Cookie::write( $data );
 	}
 }
