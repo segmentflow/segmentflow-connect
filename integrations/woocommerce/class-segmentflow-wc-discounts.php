@@ -236,6 +236,7 @@ class Segmentflow_WC_Discounts {
 	 *
 	 * @SuppressWarnings(PHPMD.UnusedFormalParameter)
 	 */
+	// phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- Reserved for future canonicalization.
 	private static function path_with_query( WP_REST_Request $request ): string {
 		if ( ! isset( $_SERVER['REQUEST_URI'] ) ) {
 			return '';
