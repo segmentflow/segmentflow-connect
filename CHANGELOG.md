@@ -4,6 +4,14 @@
 
 * Update brand logos to v2
 
+## [2.5.0](https://github.com/segmentflow/segmentflow-connect/compare/v2.4.0...v2.5.0) (2026-07-13)
+
+
+### Features
+
+* **woocommerce:** customer locale profile property support ([8f850d8](https://github.com/segmentflow/segmentflow-connect/commit/8f850d8e874072b028037f66f7a03468c8af0825))
+* **woocommerce:** stamp order locale and expose storefront context ([e3f870f](https://github.com/segmentflow/segmentflow-connect/commit/e3f870fad6158e40e9c92084a7419ec5609d28f0))
+
 ## [2.4.0](https://github.com/segmentflow/segmentflow-connect/compare/v2.3.1...v2.4.0) (2026-05-06)
 
 
