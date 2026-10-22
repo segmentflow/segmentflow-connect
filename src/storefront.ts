@@ -221,7 +221,7 @@ if ($) {
         return;
       }
 
-      let responseOk = false;
+      let responseOk: boolean;
       try {
         const json =
           typeof xhr.responseJSON === "object"

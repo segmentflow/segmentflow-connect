@@ -6,7 +6,7 @@ How to set up a local WordPress environment for developing and testing Segmentfl
 
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (must be running)
 - Node.js 24+ and pnpm 10+
-- PHP 8.1+ and Composer
+- PHP 8.2+ (patched: 8.5.12, 8.4.27, 8.3.36 or 8.2.35 or later) and Composer
 
 ## Quick start
 

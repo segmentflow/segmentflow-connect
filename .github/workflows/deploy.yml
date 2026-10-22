@@ -29,7 +29,7 @@ jobs:
             (echo "::error::Tag v${{ inputs.version }} does not exist" && exit 1)
           echo "Tag v${{ inputs.version }} verified."
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version-file: ".nvmrc"

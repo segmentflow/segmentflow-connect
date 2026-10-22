@@ -106,7 +106,7 @@ class Test_WC_Server_Events extends WP_UnitTestCase {
 		$this->assertSame( 'add_to_cart', $event['event'] );
 		$this->assertSame( 'wc_1', $event['userId'] );
 		$this->assertSame( 'anon-123', $event['anonymousId'] );
-		$this->assertSame( 'WordPress', $event['source'] );
+		$this->assertSame( 'wordpress', $event['source'] ); // phpcs:ignore WordPress.WP.CapitalPDangit.MisspelledInText -- Platform identifier.
 		$this->assertArrayHasKey( 'timestamp', $event );
 
 		$props = $event['properties'];
@@ -215,7 +215,7 @@ class Test_WC_Server_Events extends WP_UnitTestCase {
 		$this->assertSame( 'remove_from_cart', $event['event'] );
 		$this->assertSame( 'wc_2', $event['userId'] );
 		$this->assertSame( 'anon-rem-1', $event['anonymousId'] );
-		$this->assertSame( 'WordPress', $event['source'] );
+		$this->assertSame( 'wordpress', $event['source'] ); // phpcs:ignore WordPress.WP.CapitalPDangit.MisspelledInText -- Platform identifier.
 
 		$props = $event['properties'];
 		$this->assertSame( $product->get_id(), $props['product_id'] );
@@ -285,7 +285,7 @@ class Test_WC_Server_Events extends WP_UnitTestCase {
 		$this->assertSame( 'identify', $event['type'] );
 		$this->assertSame( 'wc_42', $event['userId'] );
 		$this->assertSame( 'anon-checkout-1', $event['anonymousId'] );
-		$this->assertSame( 'WordPress', $event['source'] );
+		$this->assertSame( 'wordpress', $event['source'] ); // phpcs:ignore WordPress.WP.CapitalPDangit.MisspelledInText -- Platform identifier.
 
 		$traits = $event['traits'];
 		$this->assertSame( 'customer@example.com', $traits['email'] );

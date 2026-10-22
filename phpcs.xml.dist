@@ -37,7 +37,7 @@
 
     <!-- PHP Compatibility -->
     <rule ref="PHPCompatibilityWP"/>
-    <config name="testVersion" value="8.1-"/>
+    <config name="testVersion" value="8.2-"/>
 
     <!-- Minimum WP version for deprecated function checks -->
     <config name="minimum_wp_version" value="5.8"/>

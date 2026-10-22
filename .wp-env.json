@@ -1,4 +1,5 @@
 {
+  "phpVersion": "8.5",
   "plugins": [
     ".",
     "https://downloads.wordpress.org/plugin/woocommerce.zip",

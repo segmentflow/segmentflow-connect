@@ -7,7 +7,7 @@
  * Version:     2.4.0
  * x-release-please-end
  * Requires at least: 5.8
- * Requires PHP: 8.1
+ * Requires PHP: 8.2
  * Author:      Segmentflow
  * Author URI:  https://segmentflow.ai
  * License:     GPL v2 or later
@@ -16,7 +16,7 @@
  * Domain Path: /languages
  *
  * WC requires at least: 5.0
- * WC tested up to:      9.5
+ * WC tested up to:      11.2
  *
  * @package Segmentflow_Connect
  */

@@ -100,7 +100,7 @@ class Test_Server_Events extends WP_UnitTestCase {
 		$identify = $batch[0];
 		$this->assertSame( 'identify', $identify['type'] );
 		$this->assertSame( 'anon-reg-1', $identify['anonymousId'] );
-		$this->assertSame( 'WordPress', $identify['source'] );
+		$this->assertSame( 'wordpress', $identify['source'] ); // phpcs:ignore WordPress.WP.CapitalPDangit.MisspelledInText -- Platform identifier.
 		$this->assertSame( 'newuser@example.com', $identify['traits']['email'] );
 		$this->assertSame( 'Alice', $identify['traits']['first_name'] );
 		$this->assertSame( 'Smith', $identify['traits']['last_name'] );
