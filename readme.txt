@@ -2,8 +2,8 @@
 Contributors: olivernaaris
 Tags: email marketing, analytics, segmentation, woocommerce, tracking
 Requires at least: 5.8
-Tested up to: 6.9
-Requires PHP: 8.1
+Tested up to: 7.1
+Requires PHP: 8.2
 x-release-please-start-version: .
 Stable tag: 2.4.0
 x-release-please-end: .
@@ -50,7 +50,7 @@ When WooCommerce is active, Segmentflow Connect automatically enables additional
 = Requirements =
 
 * WordPress 5.8 or later
-* PHP 8.1 or later
+* PHP 8.2 or later
 * A [Segmentflow](https://segmentflow.ai) account
 * WooCommerce 5.0 or later (optional -- for e-commerce features)
 

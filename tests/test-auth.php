@@ -13,6 +13,30 @@
 class Test_Auth extends WP_UnitTestCase {
 
 	/**
+	 * Reset request superglobals populated by the AJAX tests.
+	 */
+	public function tear_down(): void {
+		$_POST    = [];
+		$_REQUEST = [];
+		parent::tear_down();
+	}
+
+	/**
+	 * Run the current $_POST through an admin-ajax style request context.
+	 *
+	 * Outside wp_doing_ajax(), check_ajax_referer() and wp_send_json_*() call
+	 * die(), which exits PHPUnit with status 0 and silently skips every test
+	 * after it. In AJAX context they go through wp_die(), which the test
+	 * handler turns into a WPDieException. check_ajax_referer() reads the
+	 * nonce from $_REQUEST, so mirror $_POST into it.
+	 */
+	private function simulate_ajax_request(): void {
+		add_filter( 'wp_doing_ajax', '__return_true' );
+		add_filter( 'wp_die_ajax_handler', [ $this, 'get_wp_die_handler' ] );
+		$_REQUEST = $_POST; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Test fixture; the handler under test verifies the nonce.
+	}
+
+	/**
 	 * Test that the connect URL points to the correct dashboard endpoint.
 	 */
 	public function test_connect_url_for_wordpress(): void {
@@ -156,6 +180,8 @@ class Test_Auth extends WP_UnitTestCase {
 		$auth    = new Segmentflow_Auth( $options );
 
 		// wp_send_json_success() calls wp_die(), which throws WPDieException in tests.
+		$this->simulate_ajax_request();
+
 		try {
 			$auth->ajax_save_connection();
 		} catch ( WPDieException $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
@@ -186,6 +212,8 @@ class Test_Auth extends WP_UnitTestCase {
 		$options = new Segmentflow_Options();
 		$auth    = new Segmentflow_Auth( $options );
 
+		$this->simulate_ajax_request();
+
 		try {
 			$auth->ajax_save_connection();
 		} catch ( WPDieException $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
@@ -212,6 +240,8 @@ class Test_Auth extends WP_UnitTestCase {
 		$options = new Segmentflow_Options();
 		$auth    = new Segmentflow_Auth( $options );
 
+		$this->simulate_ajax_request();
+
 		try {
 			$auth->ajax_save_connection();
 		} catch ( WPDieException $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
@@ -237,6 +267,8 @@ class Test_Auth extends WP_UnitTestCase {
 
 		$options = new Segmentflow_Options();
 		$auth    = new Segmentflow_Auth( $options );
+
+		$this->simulate_ajax_request();
 
 		try {
 			$auth->ajax_save_connection();
