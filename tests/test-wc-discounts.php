@@ -12,7 +12,7 @@
 /**
  * Class Test_WC_Discounts
  *
- * Covers create / get-by-code / get / delete / redemptions plus HMAC auth
+ * Covers create / get-by-code / get / delete / status / redemptions plus HMAC auth
  * on every endpoint.
  */
 class Test_WC_Discounts extends WP_UnitTestCase {
@@ -336,6 +336,69 @@ class Test_WC_Discounts extends WP_UnitTestCase {
 	 */
 	public function test_delete_coupon_returns_404_when_missing(): void {
 		$request  = $this->build_signed_request( 'DELETE', '/segmentflow/v1/discounts/9999999', '' );
+		$response = $this->server->dispatch( $request );
+
+		$this->assertEquals( 404, $response->get_status() );
+	}
+
+	// =========================================================================
+	// POST /discounts/{id}/status
+	// =========================================================================
+
+	/**
+	 * Pausing sets the coupon to draft, so its code no longer resolves.
+	 */
+	public function test_pause_sets_coupon_to_draft(): void {
+		$id = $this->create_coupon_via_api( 'PAUSE10', 10, 0 );
+
+		$body     = wp_json_encode( [ 'active' => false ] );
+		$request  = $this->build_signed_request( 'POST', '/segmentflow/v1/discounts/' . $id . '/status', $body );
+		$response = $this->server->dispatch( $request );
+
+		$this->assertEquals( 200, $response->get_status() );
+		$this->assertFalse( $response->get_data()['active'] );
+		$this->assertEquals( 'draft', ( new WC_Coupon( $id ) )->get_status() );
+		$this->assertEquals( 0, wc_get_coupon_id_by_code( 'PAUSE10' ) );
+	}
+
+	/**
+	 * Resuming publishes the coupon again under the same code.
+	 */
+	public function test_resume_publishes_coupon_again(): void {
+		$id = $this->create_coupon_via_api( 'RESUME10', 10, 0 );
+
+		$pause = wp_json_encode( [ 'active' => false ] );
+		$this->server->dispatch( $this->build_signed_request( 'POST', '/segmentflow/v1/discounts/' . $id . '/status', $pause ) );
+
+		$resume   = wp_json_encode( [ 'active' => true ] );
+		$response = $this->server->dispatch( $this->build_signed_request( 'POST', '/segmentflow/v1/discounts/' . $id . '/status', $resume ) );
+
+		$this->assertEquals( 200, $response->get_status() );
+		$this->assertTrue( $response->get_data()['active'] );
+		$this->assertEquals( 'publish', ( new WC_Coupon( $id ) )->get_status() );
+		$this->assertEquals( $id, wc_get_coupon_id_by_code( 'RESUME10' ) );
+	}
+
+	/**
+	 * 400 when `active` is missing or not a boolean.
+	 */
+	public function test_status_requires_boolean_active(): void {
+		$id = $this->create_coupon_via_api( 'BADSTAT10', 10, 0 );
+
+		$body     = wp_json_encode( [ 'active' => 'no' ] );
+		$request  = $this->build_signed_request( 'POST', '/segmentflow/v1/discounts/' . $id . '/status', $body );
+		$response = $this->server->dispatch( $request );
+
+		$this->assertEquals( 400, $response->get_status() );
+		$this->assertEquals( 'segmentflow_invalid_status', $response->get_data()['code'] ?? '' );
+	}
+
+	/**
+	 * 404 when the coupon doesn't exist.
+	 */
+	public function test_status_returns_404_when_missing(): void {
+		$body     = wp_json_encode( [ 'active' => false ] );
+		$request  = $this->build_signed_request( 'POST', '/segmentflow/v1/discounts/9999999/status', $body );
 		$response = $this->server->dispatch( $request );
 
 		$this->assertEquals( 404, $response->get_status() );

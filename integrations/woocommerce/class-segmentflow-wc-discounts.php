@@ -9,7 +9,9 @@
  *
  * Slice 1.3 scope (issue #179):
  *   - kind: 'percentage' only on create. fixed/free_shipping deferred to #3.1.
- *   - hard delete only.
+ *   - hard delete, plus a reversible pause: POST /discounts/{id}/status sets
+ *     the coupon to draft (WooCommerce refuses draft coupons at checkout) or
+ *     publishes it again.
  *   - redemptions endpoint walks orders since a cursor and emits one row per
  *     (order, coupon) pair as the safety net for missed redemption webhooks.
  *
@@ -72,7 +74,7 @@ class Segmentflow_WC_Discounts {
 	}
 
 	/**
-	 * Register all five discount endpoints.
+	 * Register the discount endpoints.
 	 */
 	public function register_routes(): void {
 		register_rest_route(
@@ -122,6 +124,16 @@ class Segmentflow_WC_Discounts {
 					'callback'            => [ $this, 'delete_coupon' ],
 					'permission_callback' => [ $this, 'verify_hmac' ],
 				],
+			]
+		);
+
+		register_rest_route(
+			self::REST_NAMESPACE,
+			'/discounts/(?P<id>\d+)/status',
+			[
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => [ $this, 'set_coupon_status' ],
+				'permission_callback' => [ $this, 'verify_hmac' ],
 			]
 		);
 	}
@@ -469,6 +481,62 @@ class Segmentflow_WC_Discounts {
 			[
 				'providerId' => $id,
 				'deleted'    => true,
+			],
+			200
+		);
+	}
+
+	// =========================================================================
+	// POST /discounts/{id}/status
+	// =========================================================================
+
+	/**
+	 * Pause or resume a coupon without deleting it.
+	 *
+	 * Body: { "active": false } sets the coupon to draft, which WooCommerce
+	 * refuses at checkout and leaves out of by-code lookups. { "active": true }
+	 * publishes it again. The coupon's amount and expiry are untouched, so
+	 * resuming needs nothing else. Idempotent.
+	 *
+	 * @param WP_REST_Request $request The request.
+	 * @return WP_REST_Response|WP_Error
+	 */
+	public function set_coupon_status( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		if ( ! class_exists( 'WC_Coupon' ) ) {
+			return new WP_Error(
+				'segmentflow_woocommerce_inactive',
+				__( 'WooCommerce is not active on this site.', 'segmentflow-connect' ),
+				[ 'status' => 503 ]
+			);
+		}
+
+		$params = $request->get_json_params();
+		if ( ! is_array( $params ) || ! isset( $params['active'] ) || ! is_bool( $params['active'] ) ) {
+			return new WP_Error(
+				'segmentflow_invalid_status',
+				__( 'Body must be {"active": true} or {"active": false}.', 'segmentflow-connect' ),
+				[ 'status' => 400 ]
+			);
+		}
+
+		$id     = (int) $request['id'];
+		$coupon = new WC_Coupon( $id );
+		if ( 0 === $coupon->get_id() ) {
+			return new WP_Error(
+				'segmentflow_coupon_not_found',
+				__( 'Coupon not found.', 'segmentflow-connect' ),
+				[ 'status' => 404 ]
+			);
+		}
+
+		$active = $params['active'];
+		$coupon->set_status( $active ? 'publish' : 'draft' );
+		$coupon->save();
+
+		return new WP_REST_Response(
+			[
+				'providerId' => $id,
+				'active'     => $active,
 			],
 			200
 		);
