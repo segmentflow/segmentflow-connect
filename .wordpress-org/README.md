@@ -18,12 +18,21 @@ These files are deployed to SVN by the `release.yml` workflow via the
 Screenshots are referenced in `readme.txt` under `== Screenshots ==`.
 Name them sequentially: `screenshot-1.png`, `screenshot-2.png`, etc.
 
-| File               | Description                               |
-| ------------------ | ----------------------------------------- |
-| `screenshot-1.png` | Connection page (disconnected state)      |
-| `screenshot-2.png` | Connected state with organization details |
-| `screenshot-3.png` | Settings tab                              |
-| `screenshot-4.png` | WooCommerce integration tab               |
+| File                | Description                                       |
+| ------------------- | ------------------------------------------------- |
+| `screenshot-1.png`  | Growth Copilot drafts a win-back campaign         |
+| `screenshot-2.png`  | Segments: a segment with its rules and Segment AI |
+| `screenshot-3.png`  | Journeys: a welcome journey with an A/B test      |
+| `screenshot-4.png`  | Broadcasts: delivery, opens, clicks and revenue   |
+| `screenshot-5.png`  | Newsletters: one edition per language             |
+| `screenshot-6.png`  | Lead magnets: a signup form with a lead magnet    |
+| `screenshot-7.png`  | Email builder with a product block                |
+| `screenshot-8.png`  | Connection page (disconnected state)              |
+| `screenshot-9.png`  | Connected state with organization details         |
+| `screenshot-10.png` | Settings tab                                      |
+
+Screenshots 1 to 7 are 1600x900 feature images. Their sources and headlines
+are listed in the Segmentflow website assets pack (`7-store-listings/`).
 
 ## Guidelines
 
