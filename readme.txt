@@ -150,15 +150,57 @@ screen.
 
 == Changelog ==
 
-= Unreleased =
-* Add HMAC-authenticated discount endpoints under `/wp-json/segmentflow/v1/discounts` so the Segmentflow backend can manage WooCommerce coupons through a versioned plugin contract:
-  * `POST /` — create a percentage coupon
-  * `GET /by-code/{code}` — fetch by code
-  * `GET /{providerId}` — fetch by ID
-  * `DELETE /{providerId}` — hard-delete
-  * `GET /redemptions?since=...` — list orders that used a coupon since a cursor
-  Authentication uses the existing webhook secret with `X-Segmentflow-Timestamp` and `X-Segmentflow-Signature` headers. Older plugin installs without these endpoints respond 404; the Segmentflow backend will surface a "plugin update required" message until the merchant updates.
-* Update brand logos to v2
+= 2.5.1 =
+* Refresh the WordPress.org listing with a new description and feature screenshots
+
+= 2.5.0 =
+* Save the shopper's checkout language on each WooCommerce order and pass it to the storefront tracking script (`context.locale`), so you can segment and send campaigns by language
+* Require PHP 8.2 or later, and declare compatibility with WordPress 7.1 and WooCommerce 11.2
+
+= 2.4.0 =
+* Add discount endpoints under `/wp-json/segmentflow/v1/discounts` so Segmentflow can create, look up, and delete WooCommerce percentage coupons, and list the orders that used them. Requests are signed with your webhook secret. On older plugin versions, Segmentflow shows a "plugin update required" message.
+
+= 2.3.1 =
+* Fix the Segmentflow icon overflowing the WordPress admin menu
+
+= 2.3.0 =
+* Add a cookie-consent gate: until a visitor consents, the plugin does not set the Segmentflow identity cookie and holds browsing events in the browser. The events are sent if the visitor accepts and dropped if they refuse. Orders, logins, and form submissions are still sent.
+
+= 2.2.0 =
+* Track `checkout_started`, `product_viewed`, and `cart_viewed` events on WooCommerce stores, which the abandoned cart segment needs
+
+= 2.1.2 =
+* Shorten the short description to fit the WordPress.org 150-character limit
+
+= 2.1.1 =
+* Update the logo and icons to the new Segmentflow brand
+
+= 2.1.0 =
+* Save first-touch UTM parameters on WooCommerce orders, so Segmentflow can attribute each order to the campaign that first brought the shopper
+
+= 2.0.0 =
+* Breaking change: Contact Form 7 and Elementor Pro form captures now send the `form_submission` event instead of `form_submitted`. Update any journeys, segments, or reports that use the old event name.
+
+= 1.5.0 =
+* Add the `[segmentflow_form]` shortcode for embedding a Segmentflow form inline
+
+= 1.4.0 =
+* Register WooCommerce webhooks from the plugin when you connect, and keep them registered
+* Load the tracking SDK from the versioned `/v1/` CDN path
+
+= 1.3.0 =
+* Add the WooCommerce session ID to tracking and orders, to link anonymous browsing to purchases
+* Stop tracking WooCommerce order notes as comments
+
+= 1.2.0 =
+* Add a setting to turn the WooCommerce integration on or off
+* Stop sending an empty user ID for anonymous visitors
+
+= 1.1.1 =
+* Deploy only the plugin's runtime files to WordPress.org
+
+= 1.1.0 =
+* Add the WordPress.org directory icon, banner, and screenshots
 
 = 1.0.6 =
 * Add dedicated Forms tab with site URL copy button, dashboard links, setup guide, and testing tip

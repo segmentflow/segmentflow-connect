@@ -1,9 +1,5 @@
 # Changelog
 
-## Unreleased
-
-* Update brand logos to v2
-
 ## [2.5.1](https://github.com/segmentflow/segmentflow-connect/compare/v2.5.0...v2.5.1) (2026-11-15)
 
 
@@ -65,6 +61,7 @@
 
 ### Maintenance
 
+* **assets:** migrate logo and icon to v2 brand ([e1e6fc9](https://github.com/segmentflow/segmentflow-connect/commit/e1e6fc958dda20557dc1045e01aea444253db8d1))
 * release 2.1.1 ([b6ca3d8](https://github.com/segmentflow/segmentflow-connect/commit/b6ca3d8fdecc251c12ebd7abce820bc410b4a603))
 
 ## [2.1.0](https://github.com/segmentflow/segmentflow-connect/compare/v2.0.0...v2.1.0) (2026-04-15)
