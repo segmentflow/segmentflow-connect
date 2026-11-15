@@ -10,16 +10,19 @@ x-release-please-end: .
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-AI email marketing for WordPress and WooCommerce — natural-language segments, one-click campaigns, and revenue attribution.
+AI email marketing for WooCommerce: Growth Copilot, segments, journeys, broadcasts, newsletters, lead magnets and an email builder.
 
 == Description ==
 
-Segmentflow Connect links your WordPress site to [Segmentflow](https://segmentflow.ai), enabling:
+Segmentflow Connect links your WordPress site or WooCommerce store to [Segmentflow](https://segmentflow.ai), AI email marketing for ecommerce. Your customers, orders, and products sync to Segmentflow, and you get:
 
-* **Talk to your data** -- Create customer segments using natural language ("Customers who bought twice but haven't opened an email in a month")
-* **Brand-aware creative** -- Automatically pull your logos, product photos, and color palettes to generate ready-to-send email templates
-* **One-click campaigns** -- Launch email campaigns with real-time delivery stats
-* **Revenue attribution** -- Track the exact dollar amount every campaign generates
+* **Growth Copilot** -- Describe a goal in plain English, like "win back customers who haven't ordered in 60 days". Growth Copilot drafts the audience, the emails, and the journey or broadcast. Nothing is sent until you approve it.
+* **Segments** -- 11 ready-to-use customer segments, such as Repeat Customers and Dormant Customers, that update as orders come in. Describe any other segment in plain English and the AI builds it.
+* **Journeys** -- Automated welcome, abandoned cart, post-purchase, and win-back emails, with delays, splits, and A/B tests.
+* **Broadcasts** -- One-off campaigns with delivery, open, and click stats, plus the orders and revenue each one brings in.
+* **Newsletters** -- Recurring newsletters, with an edition for each language your customers speak.
+* **Lead magnets** -- Popup, inline, and slide-in signup forms for your site. New subscribers join a segment and can get a lead magnet email or start a journey.
+* **Email builder** -- Edit emails by hand, add products from your store, or ask Email AI to write or rewrite any part. Your brand kit (logo, colors, and fonts) is built from your website.
 
 = Works on Any WordPress Site =
 
@@ -134,10 +137,16 @@ screen.
 
 == Screenshots ==
 
-1. Connection page -- Connect your WordPress site to Segmentflow with one click
-2. Connected state -- Organization name, platform, write key, and tracking status
-3. Settings -- Debug mode, consent required, API host override
-4. WooCommerce integration -- Store URL, WC version, currency, and enrichment status
+1. Growth Copilot -- Describe a goal and get a whole campaign to review: the audience, the emails, and the journey
+2. Segments -- A customer segment with its rules and live count, and Segment AI to build new ones in plain English
+3. Journeys -- A welcome journey that tests two wait times against each other
+4. Broadcasts -- Delivery, opens, clicks, and the orders and revenue a broadcast brought in
+5. Newsletters -- One newsletter with an edition for each language
+6. Lead magnets -- A signup form for your site that delivers a lead magnet to new subscribers
+7. Email builder -- Edit by hand or with Email AI, with a live preview and products from your store
+8. Connection page -- Connect your WordPress site to Segmentflow with one click
+9. Connected state -- Organization name, platform, write key, and tracking status
+10. Settings -- Debug mode, consent required, API host override
 
 == Changelog ==
 
