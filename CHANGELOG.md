@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.6.0](https://github.com/segmentflow/segmentflow-connect/compare/v2.5.1...v2.6.0) (2026-11-16)
+
+
+### Features
+
+* **woocommerce:** pause and resume coupons through a status endpoint ([9644543](https://github.com/segmentflow/segmentflow-connect/commit/9644543088d08e0a39599c43d5b853be1d7cc76f))
+* **woocommerce:** pause and resume coupons through a status endpoint ([3db04d3](https://github.com/segmentflow/segmentflow-connect/commit/3db04d35ded6c11a27ba5b36331fb4595f77b85d))
+
+
+### Bug Fixes
+
+* send the email at the top level of the storefront identify call ([3cbddf1](https://github.com/segmentflow/segmentflow-connect/commit/3cbddf1677161641e5f8af6ce1c8a0945b4f238c))
+* send the email at the top level of the storefront identify call ([ad5400a](https://github.com/segmentflow/segmentflow-connect/commit/ad5400a68e0ffc4a4cfd951b96863790ab11363d))
+
 ## [2.5.1](https://github.com/segmentflow/segmentflow-connect/compare/v2.5.0...v2.5.1) (2026-11-15)
 
 
