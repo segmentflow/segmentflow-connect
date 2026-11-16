@@ -178,31 +178,42 @@ class Segmentflow_Tracking {
 
 		$inline_js .= "\tif (wpContext.userId) {\n";
 
-		// On the WooCommerce thank-you page, webhook-based identity handles
-		// identification via appendIdentitySignal(). Skip the PHP identify
-		// call to prevent overwriting the billing email with the WP user email.
-		if ( ! ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-received' ) ) ) {
-			$inline_js .= "\t\tvar traits = {};\n";
+		// The Segmentflow API accepts an identify only with a top-level email,
+		// so the PHP identify runs only when an email is known. It is skipped
+		// on two WooCommerce pages so the WP user email never replaces the
+		// billing email:
+		// - order-received: webhook-based identity handles identification via
+		//   appendIdentitySignal().
+		// - checkout: the SDK's checkout email capture identifies the buyer
+		//   with the billing email from the form field.
+		$is_order_received = function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-received' );
+		$is_checkout       = function_exists( 'is_checkout' ) && is_checkout();
 
-			if ( ! ( function_exists( 'is_checkout' ) && is_checkout() ) ) {
-				$inline_js .= "\t\tif (wpContext.userEmail) { traits.email = wpContext.userEmail; }\n";
-			}
-
-			if ( $has_extra ) {
-				$inline_js .= "\t\tif (typeof integrationContext !== 'undefined' && integrationContext.traits) {\n";
-				$inline_js .= "\t\t\tObject.assign(traits, integrationContext.traits);\n";
-				$inline_js .= "\t\t}\n";
-			}
-
-			$inline_js .= "\t\tvar identifyParams = { userId: wpContext.userId, traits: traits };\n";
+		if ( ! $is_order_received && ! $is_checkout ) {
+			$inline_js .= "\t\tif (wpContext.userEmail) {\n";
+			$inline_js .= "\t\t\tvar traits = { email: wpContext.userEmail };\n";
 
 			if ( $has_extra ) {
-				$inline_js .= "\t\tif (typeof integrationContext !== 'undefined' && integrationContext.context) {\n";
-				$inline_js .= "\t\t\tidentifyParams.context = integrationContext.context;\n";
-				$inline_js .= "\t\t}\n";
+				$inline_js .= "\t\t\tif (typeof integrationContext !== 'undefined' && integrationContext.traits) {\n";
+				$inline_js .= "\t\t\t\tObject.assign(traits, integrationContext.traits);\n";
+				$inline_js .= "\t\t\t}\n";
 			}
 
-			$inline_js .= "\t\twindow.segmentflow.identify(identifyParams);\n";
+			$inline_js .= "\t\t\tvar identifyParams = { email: wpContext.userEmail, userId: wpContext.userId, traits: traits };\n";
+
+			if ( $has_extra ) {
+				$inline_js .= "\t\t\tif (typeof integrationContext !== 'undefined' && integrationContext.context) {\n";
+				$inline_js .= "\t\t\t\tidentifyParams.context = integrationContext.context;\n";
+				$inline_js .= "\t\t\t}\n";
+			}
+
+			// Newer SDK builds return a promise that rejects when identify is
+			// refused; older builds return nothing.
+			$inline_js .= "\t\t\tvar identifyResult = window.segmentflow.identify(identifyParams);\n";
+			$inline_js .= "\t\t\tif (identifyResult && typeof identifyResult.catch === 'function') {\n";
+			$inline_js .= "\t\t\t\tidentifyResult.catch(function() {});\n";
+			$inline_js .= "\t\t\t}\n";
+			$inline_js .= "\t\t}\n";
 		}
 
 		$inline_js .= "\t}\n";

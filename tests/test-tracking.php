@@ -99,6 +99,55 @@ class Test_Tracking extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that the PHP identify sends the user's email at the top level.
+	 *
+	 * The Segmentflow web SDK and the ingest API refuse an identify without a
+	 * top-level email, so a traits-only email is never enough.
+	 */
+	public function test_identify_sends_top_level_email_for_logged_in_user(): void {
+		update_option( 'segmentflow_write_key', 'test_key_abc' );
+
+		$user_id = $this->factory->user->create( [ 'user_email' => 'shopper@example.com' ] );
+		wp_set_current_user( $user_id );
+
+		$options  = new Segmentflow_Options();
+		$tracking = new Segmentflow_Tracking( $options );
+		$tracking->enqueue_sdk();
+
+		$inline = $this->get_sdk_inline_script();
+		$this->assertStringContainsString( 'userEmail: "shopper@example.com"', $inline );
+		$this->assertStringContainsString( 'if (wpContext.userEmail) {', $inline );
+		$this->assertStringContainsString( 'var identifyParams = { email: wpContext.userEmail, userId: wpContext.userId, traits: traits };', $inline );
+		$this->assertStringContainsString( 'window.segmentflow.identify(identifyParams)', $inline );
+
+		// Cleanup.
+		wp_set_current_user( 0 );
+		delete_option( 'segmentflow_write_key' );
+	}
+
+	/**
+	 * Test that a refused identify does not surface as an unhandled rejection.
+	 */
+	public function test_identify_handles_rejected_promise(): void {
+		update_option( 'segmentflow_write_key', 'test_key_abc' );
+
+		$user_id = $this->factory->user->create();
+		wp_set_current_user( $user_id );
+
+		$options  = new Segmentflow_Options();
+		$tracking = new Segmentflow_Tracking( $options );
+		$tracking->enqueue_sdk();
+
+		$inline = $this->get_sdk_inline_script();
+		$this->assertStringContainsString( "typeof identifyResult.catch === 'function'", $inline );
+		$this->assertStringContainsString( 'identifyResult.catch(function() {});', $inline );
+
+		// Cleanup.
+		wp_set_current_user( 0 );
+		delete_option( 'segmentflow_write_key' );
+	}
+
+	/**
 	 * Test that SDK includes locale in WordPress context.
 	 */
 	public function test_sdk_includes_locale(): void {
